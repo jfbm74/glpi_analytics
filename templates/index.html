@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard IT - Clínica Bonsana</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <style>
+        :root {
+            --bonsana-red: #dc3545;
+            --bonsana-red-light: #f8d7da;
+            --bonsana-red-dark: #b02a37;
+            --bonsana-white: #ffffff;
+            --bonsana-gray-light: #f8f9fa;
+            --bonsana-gray: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+        }
+
+        body {
+            background-color: var(--bonsana-gray-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--bonsana-white) 0%, #fafafa 100%);
+        }
+
+        .metric-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--bonsana-red);
+        }
+
+        .metric-label {
+            color: var(--bonsana-gray);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-icon {
+            font-size: 2rem;
+            color: var(--bonsana-red);
+            opacity: 0.8;
+        }
+
+        .section-title {
+            color: var(--bonsana-red-dark);
+            font-weight: bold;
+            border-bottom: 3px solid var(--bonsana-red);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+
+        .chart-container.small {
+            height: 250px;
+        }
+
+        .alert-custom {
+            border-left: 4px solid var(--bonsana-red);
+            background-color: var(--bonsana-red-light);
+            border-color: var(--bonsana-red);
+        }
+
+        .nav-pills .nav-link {
+            color: var(--bonsana-red);
+            border: 1px solid var(--bonsana-red);
+            margin-right: 0.5rem;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: var(--bonsana-red);
+            border-color: var(--bonsana-red);
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: var(--bonsana-red-light);
+        }
+
+        .table th {
+            background-color: var(--bonsana-red);
+            color: white;
+            border: none;
+        }
+
+        .badge-custom {
+            background-color: var(--bonsana-red);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(220, 53, 69, .3);
+            border-radius: 50%;
+            border-top-color: var(--bonsana-red);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .insight-item {
+            border-left: 4px solid var(--bonsana-red);
+            background-color: white;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .trend-indicator {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+        }
+
+        .trend-up {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .trend-down {
+            background-color: var(--bonsana-red);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-hospital me-2"></i>
+                Clínica Bonsana - Dashboard IT
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text text-white">
+                    <i class="bi bi-calendar-today me-1"></i>
+                    <span id="currentDate"></span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills mb-4" id="viewTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
+                    <i class="bi bi-speedometer2 me-1"></i>Resumen General
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="analysis-tab" data-bs-toggle="pill" data-bs-target="#analysis" type="button" role="tab">
+                    <i class="bi bi-graph-up me-1"></i>Análisis Detallado
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="validation-tab" data-bs-toggle="pill" data-bs-target="#validation" type="button" role="tab">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Validación de Datos
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="tabContent">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <!-- Key Metrics Row -->
+                <div class="row mb-4">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="metric-value" id="totalTickets">-</div>
+                                        <div class="metric-label">Total Tickets</div>
+                                    </div>
+                                    <i class="bi bi-ticket-perforated metric-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="metric-value" id="resolutionRate">-</div>
+                                        <div class="metric-label">Tasa de Resolución</div>
+                                    </div>
+                                    <i class="bi bi-check-circle metric-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="metric-value" id="avgResolutionTime">-</div>
+                                        <div class="metric-label">Tiempo Promedio (hrs)</div>
+                                    </div>
+                                    <i class="bi bi-clock-history metric-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="metric-value" id="slaCompliance">-</div>
+                                        <div class="metric-label">Cumplimiento SLA</div>
+                                    </div>
+                                    <i class="bi bi-shield-check metric-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="row mb-4">
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-pie-chart me-2"></i>Distribución por Tipo
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container small">
+                                    <canvas id="typeDistributionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-bar-chart me-2"></i>Estado de Tickets
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container small">
+                                    <canvas id="statusDistributionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Metrics Row -->
+                <div class="row mb-4">
+                    <div class="col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-exclamation-diamond me-2"></i>Distribución por Prioridad
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container small">
+                                    <canvas id="priorityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-people me-2"></i>Carga por Técnico
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container small">
+                                    <canvas id="technicianChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-emoji-smile me-2"></i>Satisfacción del Cliente
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center">
+                                    <div class="metric-value" id="csatScore">-</div>
+                                    <div class="metric-label">CSAT Promedio</div>
+                                    <small class="text-muted">
+                                        <span id="csatSurveys">-</span> encuestas respondidas
+                                    </small>
+                                </div>
+                                <div class="chart-container small mt-3">
+                                    <canvas id="csatChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Tab -->
+            <div class="tab-pane fade" id="analysis" role="tabpanel">
+                <div class="row mb-4">
+                    <div class="col-lg-8 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-graph-up me-2"></i>Top Categorías de Problemas
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="categoryChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-person-check me-2"></i>Top Solicitantes
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="topRequesters">
+                                    <div class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Cargando datos...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SLA Analysis -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-shield-exclamation me-2"></i>Análisis de SLA
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-lg-6">
+                                        <h6>Resumen de Incidencias</h6>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="text-center p-3 bg-light rounded">
+                                                    <div class="h4 text-primary" id="totalIncidents">-</div>
+                                                    <small>Total Incidencias</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="text-center p-3 bg-light rounded">
+                                                    <div class="h4 text-danger" id="slaExceeded">-</div>
+                                                    <small>SLA Excedido</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <h6>Cumplimiento por Nivel de SLA</h6>
+                                        <div id="slaLevels">
+                                            <div class="text-center">
+                                                <div class="loading-spinner"></div>
+                                                <p class="mt-2 text-muted">Cargando análisis SLA...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Tab -->
+            <div class="tab-pane fade" id="validation" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <h3 class="section-title">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Análisis de Calidad de Datos
+                        </h3>
+                        <div id="validationInsights">
+                            <div class="text-center">
+                                <div class="loading-spinner"></div>
+                                <p class="mt-2 text-muted">Analizando calidad de datos...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Global chart configuration
+        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+        Chart.defaults.color = '#6c757d';
+
+        const colors = {
+            primary: '#dc3545',
+            secondary: '#6c757d',
+            success: '#28a745',
+            warning: '#ffc107',
+            info: '#17a2b8',
+            light: '#f8f9fa',
+            dark: '#343a40'
+        };
+
+        // Set current date
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Data storage
+        let dashboardData = {};
+
+        // Load all data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+        });
+
+        async function loadDashboardData() {
+            try {
+                // Load all data in parallel
+                const [metrics, distributions, technicians, requesters, sla, csat, validation] = await Promise.all([
+                    fetch('/api/metrics').then(r => r.json()),
+                    fetch('/api/distributions').then(r => r.json()),
+                    fetch('/api/technicians').then(r => r.json()),
+                    fetch('/api/requesters').then(r => r.json()),
+                    fetch('/api/sla').then(r => r.json()),
+                    fetch('/api/csat').then(r => r.json()),
+                    fetch('/api/validation').then(r => r.json())
+                ]);
+
+                dashboardData = {
+                    metrics,
+                    distributions,
+                    technicians,
+                    requesters,
+                    sla,
+                    csat,
+                    validation
+                };
+
+                updateDashboard();
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                showError('Error al cargar los datos del dashboard');
+            }
+        }
+
+        function updateDashboard() {
+            updateMetrics();
+            updateCharts();
+            updateAnalysis();
+            updateValidation();
+        }
+
+        function updateMetrics() {
+            const { metrics } = dashboardData;
+            
+            document.getElementById('totalTickets').textContent = metrics.total_tickets || 0;
+            document.getElementById('resolutionRate').textContent = `${metrics.resolution_rate || 0}%`;
+            document.getElementById('avgResolutionTime').textContent = metrics.avg_resolution_time_hours || 0;
+            document.getElementById('slaCompliance').textContent = `${metrics.sla_compliance || 0}%`;
+        }
+
+        function updateCharts() {
+            createTypeDistributionChart();
+            createStatusDistributionChart();
+            createPriorityChart();
+            createTechnicianChart();
+            createCSATChart();
+            createCategoryChart();
+        }
+
+        function createTypeDistributionChart() {
+            const ctx = document.getElementById('typeDistributionChart').getContext('2d');
+            const data = dashboardData.distributions.by_type || {};
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: [colors.primary, colors.info],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createStatusDistributionChart() {
+            const ctx = document.getElementById('statusDistributionChart').getContext('2d');
+            const data = dashboardData.distributions.by_status || {};
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: [colors.success, colors.primary, colors.warning],
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createPriorityChart() {
+            const ctx = document.getElementById('priorityChart').getContext('2d');
+            const data = dashboardData.distributions.by_priority || {};
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: [colors.primary, colors.warning, colors.success],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTechnicianChart() {
+            const ctx = document.getElementById('technicianChart').getContext('2d');
+            const data = dashboardData.technicians || {};
+            
+            // Limit to top 5 technicians for readability
+            const sortedTechnicians = Object.entries(data)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedTechnicians.map(([name]) => name.length > 15 ? name.substring(0, 15) + '...' : name),
+                    datasets: [{
+                        data: sortedTechnicians.map(([,count]) => count),
+                        backgroundColor: colors.primary,
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCSATChart() {
+            const ctx = document.getElementById('csatChart').getContext('2d');
+            const data = dashboardData.csat || {};
+            
+            document.getElementById('csatScore').textContent = data.average_csat || '-';
+            document.getElementById('csatSurveys').textContent = data.total_surveys || 0;
+            
+            if (data.distribution && Object.keys(data.distribution).length > 0) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data.distribution).map(score => `${score} ⭐`),
+                        datasets: [{
+                            data: Object.values(data.distribution),
+                            backgroundColor: colors.primary,
+                            borderWidth: 1,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function createCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            const data = dashboardData.distributions.by_category || {};
+            
+            // Get top 10 categories
+            const sortedCategories = Object.entries(data)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 10);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedCategories.map(([name]) => name.length > 20 ? name.substring(0, 20) + '...' : name),
+                    datasets: [{
+                        data: sortedCategories.map(([,count]) => count),
+                        backgroundColor: colors.primary,
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAnalysis() {
+            updateTopRequesters();
+            updateSLAAnalysis();
+        }
+
+        function updateTopRequesters() {
+            const container = document.getElementById('topRequesters');
+            const data = dashboardData.requesters || {};
+            
+            let html = '<div class="list-group list-group-flush">';
+            Object.entries(data).forEach(([requester, count]) => {
+                const displayName = requester.length > 25 ? requester.substring(0, 25) + '...' : requester;
+                html += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="fw-medium">${displayName}</span>
+                        <span class="badge badge-custom rounded-pill">${count}</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        function updateSLAAnalysis() {
+            const data = dashboardData.sla || {};
+            
+            document.getElementById('totalIncidents').textContent = data.total_incidents || 0;
+            document.getElementById('slaExceeded').textContent = data.sla_exceeded || 0;
+            
+            const container = document.getElementById('slaLevels');
+            const levels = data.sla_compliance_by_level || {};
+            
+            let html = '';
+            Object.entries(levels).forEach(([level, levelData]) => {
+                const complianceClass = levelData.compliance_rate >= 80 ? 'success' : 
+                                      levelData.compliance_rate >= 60 ? 'warning' : 'danger';
+                html += `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-medium">${level}</span>
+                            <span class="text-${complianceClass}">${levelData.compliance_rate}%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-${complianceClass}" 
+                                 style="width: ${levelData.compliance_rate}%"></div>
+                        </div>
+                        <small class="text-muted">
+                            ${levelData.within_sla} de ${levelData.total} tickets
+                        </small>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html || '<p class="text-muted">No hay datos de SLA disponibles</p>';
+        }
+
+        function updateValidation() {
+            const container = document.getElementById('validationInsights');
+            const data = dashboardData.validation || {};
+            
+            let html = '';
+            
+            // Tickets sin asignar
+            if (data.unassigned_tickets) {
+                html += createInsightCard(
+                    'Tickets Sin Asignar',
+                    data.unassigned_tickets.count,
+                    data.unassigned_tickets.recommendation,
+                    'bi-person-x',
+                    'warning'
+                );
+            }
+            
+            // Tickets sin categoría
+            if (data.no_category_tickets) {
+                html += createInsightCard(
+                    'Tickets Sin Categoría',
+                    data.no_category_tickets.count,
+                    data.no_category_tickets.recommendation,
+                    'bi-tag',
+                    'info'
+                );
+            }
+            
+            // Hardware sin assets
+            if (data.hardware_no_assets) {
+                html += createInsightCard(
+                    'Hardware Sin Elementos Asociados',
+                    data.hardware_no_assets.count,
+                    data.hardware_no_assets.recommendation,
+                    'bi-pc-display',
+                    'danger'
+                );
+            }
+            
+            container.innerHTML = html || '<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>No se encontraron problemas de calidad en los datos</div>';
+        }
+
+        function createInsightCard(title, count, recommendation, icon, type) {
+            return `
+                <div class="insight-item">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="bi ${icon} fs-3 text-${type}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold mb-1">${title}</h6>
+                            <p class="mb-2">
+                                <span class="badge bg-${type}">${count} tickets</span>
+                            </p>
+                            <p class="mb-0 text-muted">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                <strong>Recomendación:</strong> ${recommendation}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const alertHtml = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('afterbegin', alertHtml);
+        }
+
+        // Refresh data every 5 minutes
+        setInterval(loadDashboardData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

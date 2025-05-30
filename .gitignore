@@ -1,0 +1,224 @@
+# Dashboard IT - Clínica Bonsana
+# Archivos y directorios a ignorar en Git
+
+# Archivos de datos sensibles
+data/*.csv
+data/*.xlsx
+data/*.json
+backups/
+exports/
+
+# Archivos de configuración con información sensible
+.env
+config.json
+secrets/
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Cache y archivos temporales
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.virtualenv
+.conda
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# Documentación generada
+docs/_build/
+.readthedocs.yml
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Flask
+instance/
+.webassets-cache
+.flask_session
+
+# Archivos de base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Reportes y exports
+reports/
+exports/
+*.pdf
+*.docx
+
+# Archivos de configuración específicos del servidor
+supervisor.conf
+nginx.conf
+apache.conf
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.p12
+
+# Archivos de backup automático
+*.bak
+*.backup
+*~
+
+# Archivos de monitoreo
+monitoring/
+metrics/
+
+# Docker
+.dockerignore
+Dockerfile.prod
+
+# Archivos de datos de ejemplo (mantener solo en desarrollo)
+# Descomentar si no quieres que los datos de ejemplo se suban
+# data/sample_*.csv
+# data/test_*.csv
+
+# Archivos de configuración locales
+local_config.py
+development.cfg
+production.cfg
+
+# Archivos temporales de la aplicación
+temp/
+tmp/
+cache/
+
+# Archivos de usuario específicos
+user_data/
+user_exports/
+user_reports/
+
+# Archivos de sesión
+flask_session/
+sessions/
+
+# Archivos de error dumps
+error_dumps/
+crash_reports/
+
+# Archivos de profiling
+*.prof
+profile_*.txt
+
+# Archivos de migración (si se usa Alembic en futuro)
+migrations/versions/
+
+# Archivos de traducción compilados
+*.mo
+
+# Archivos de media generados dinámicamente
+media/generated/
+static/generated/
+
+# Archivos de configuración del servidor web
+uwsgi.ini
+gunicorn.conf.py
+
+# Archivos de monitoreo de rendimiento
+newrelic.ini
+datadog.conf
+
+# Archivos de backup de la base de datos
+db_backup_*
+*.sql.gz
+
+# Archivos de configuración de CI/CD
+.github/workflows/deploy.yml
+.gitlab-ci-local.yml
+
+# Archivos de análisis de código
+.sonarqube/
+.scannerwork/
+
+# Archivos de dependencias locales
+pip-selfcheck.json
+pyvenv.cfg
+
+# Archivos de configuración de editores
+.editorconfig
+.prettierrc
+
+# Archivos de documentación personal
+NOTES.md
+TODO.md
+personal_notes/
+
+# Archivos de configuración de herramientas de desarrollo
+.black
+.isort.cfg
+setup.cfg
+pyproject.toml
+
+# Archivos de respaldo del sistema
+*_backup_*
+*.orig
+
+# Archivos de configuración específicos de la organización
+organization_config/
+department_settings/
+
+# Mantener directorios pero ignorar contenido
+data/.gitkeep
+logs/.gitkeep
+backups/.gitkeep
+temp/.gitkeep
