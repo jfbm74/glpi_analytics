@@ -1,12 +1,39 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import pandas as pd
 import json
 from datetime import datetime
 import os
 from collections import Counter
 import numpy as np
+import asyncio
+import logging
+from dotenv import load_dotenv
+from config import get_config
+
+# Cargar variables de entorno
+load_dotenv()
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+config = get_config()
+app.config.from_object(config)
+
+# Importar Google AI solo si está habilitado
+if config.AI_ANALYSIS_ENABLED:
+    try:
+        import google.generativeai as genai
+        if config.GOOGLE_AI_API_KEY:
+            genai.configure(api_key=config.GOOGLE_AI_API_KEY)
+            logger.info("Google AI Studio configurado correctamente")
+        else:
+            logger.warning("Google AI API Key no encontrada")
+            config.AI_ANALYSIS_ENABLED = False
+    except ImportError:
+        logger.error("google-generativeai no instalado. Instala con: pip install google-generativeai")
+        config.AI_ANALYSIS_ENABLED = False
 
 class TicketAnalyzer:
     def __init__(self, data_path='data/'):
@@ -47,11 +74,20 @@ class TicketAnalyzer:
                 if col in self.df.columns:
                     self.df[col] = pd.to_datetime(self.df[col], format='%Y-%m-%d %H:%M', errors='coerce')
             
-            print(f"Datos cargados exitosamente: {len(self.df)} tickets")
+            logger.info(f"Datos cargados exitosamente: {len(self.df)} tickets")
             
         except Exception as e:
-            print(f"Error al cargar los datos: {str(e)}")
+            logger.error(f"Error al cargar los datos: {str(e)}")
             raise
+    
+    def get_csv_path(self):
+        """
+        Retorna la ruta del archivo CSV principal
+        """
+        csv_files = [f for f in os.listdir(self.data_path) if f.endswith('.csv')]
+        if csv_files:
+            return os.path.join(self.data_path, csv_files[0])
+        return None
     
     def get_overall_metrics(self):
         """
@@ -297,15 +333,108 @@ class TicketAnalyzer:
         
         return trends
 
+class AIAnalysisService:
+    """Servicio para análisis con Google AI Studio"""
+    
+    def __init__(self):
+        self.model = None
+        if config.AI_ANALYSIS_ENABLED and config.GOOGLE_AI_API_KEY:
+            try:
+                self.model = genai.GenerativeModel(config.GOOGLE_AI_MODEL)
+                logger.info(f"Modelo AI inicializado: {config.GOOGLE_AI_MODEL}")
+            except Exception as e:
+                logger.error(f"Error inicializando modelo AI: {e}")
+                config.AI_ANALYSIS_ENABLED = False
+    
+    def is_available(self):
+        """Verifica si el servicio de AI está disponible"""
+        return config.AI_ANALYSIS_ENABLED and self.model is not None
+    
+    def prepare_csv_data(self, csv_path):
+        """
+        Prepara los datos CSV para envío a la AI
+        """
+        try:
+            # Verificar tamaño del archivo
+            file_size_mb = os.path.getsize(csv_path) / (1024 * 1024)
+            if file_size_mb > config.AI_CONFIG['max_csv_size_mb']:
+                raise ValueError(f"Archivo CSV muy grande: {file_size_mb:.1f}MB. Máximo permitido: {config.AI_CONFIG['max_csv_size_mb']}MB")
+            
+            # Leer CSV
+            df = pd.read_csv(csv_path, delimiter=';', encoding='utf-8')
+            
+            # Limpiar y preparar datos
+            # Eliminar columnas completamente vacías
+            df = df.dropna(axis=1, how='all')
+            
+            # Limitar a primeras 1000 filas para análisis si es muy grande
+            if len(df) > 1000:
+                logger.warning(f"CSV muy grande ({len(df)} filas), limitando a 1000 filas para análisis")
+                df = df.head(1000)
+            
+            # Convertir a string para envío
+            csv_string = df.to_csv(sep=';', index=False)
+            
+            return csv_string
+            
+        except Exception as e:
+            logger.error(f"Error preparando datos CSV: {e}")
+            raise
+    
+    def analyze_tickets(self, csv_path):
+        """
+        Realiza análisis completo de tickets usando Google AI Studio
+        """
+        if not self.is_available():
+            raise Exception("Servicio de AI no disponible")
+        
+        try:
+            # Preparar datos
+            csv_data = self.prepare_csv_data(csv_path)
+            
+            # Crear prompt con datos
+            prompt = config.AI_CONFIG['prompt_template'].format(csv_data=csv_data)
+            
+            logger.info("Enviando solicitud a Google AI Studio...")
+            
+            # Generar respuesta
+            response = self.model.generate_content(
+                prompt,
+                generation_config={
+                    'temperature': 0.7,
+                    'top_p': 0.9,
+                    'max_output_tokens': 8192,
+                }
+            )
+            
+            logger.info("Análisis completado exitosamente")
+            
+            return {
+                'success': True,
+                'analysis': response.text,
+                'timestamp': datetime.now().isoformat(),
+                'model_used': config.GOOGLE_AI_MODEL,
+                'csv_rows_analyzed': csv_data.count('\n') - 1  # Menos header
+            }
+            
+        except Exception as e:
+            logger.error(f"Error en análisis AI: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+
 # Instancia global del analizador
 analyzer = TicketAnalyzer()
+ai_service = AIAnalysisService()
 
 @app.route('/')
 def dashboard():
     """
     Página principal del dashboard
     """
-    return render_template('index.html')
+    return render_template('index.html', ai_enabled=config.AI_ANALYSIS_ENABLED)
 
 @app.route('/api/metrics')
 def api_metrics():
@@ -394,6 +523,65 @@ def api_trends():
         return jsonify(trends)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/analyze', methods=['POST'])
+def api_ai_analyze():
+    """
+    API endpoint para análisis con Google AI Studio
+    """
+    try:
+        if not ai_service.is_available():
+            return jsonify({
+                'success': False,
+                'error': 'Servicio de AI no disponible. Verifica la configuración de Google AI Studio API Key.'
+            }), 503
+        
+        # Obtener ruta del CSV
+        csv_path = analyzer.get_csv_path()
+        if not csv_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se encontró archivo CSV para analizar'
+            }), 404
+        
+        # Realizar análisis
+        result = ai_service.analyze_tickets(csv_path)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logger.error(f"Error en endpoint AI: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        }), 500
+
+@app.route('/api/ai/status')
+def api_ai_status():
+    """
+    API endpoint para verificar estado del servicio AI
+    """
+    return jsonify({
+        'ai_enabled': config.AI_ANALYSIS_ENABLED,
+        'api_key_configured': bool(config.GOOGLE_AI_API_KEY),
+        'model': config.GOOGLE_AI_MODEL if config.AI_ANALYSIS_ENABLED else None,
+        'service_available': ai_service.is_available()
+    })
+
+@app.route('/health')
+def health_check():
+    """
+    Endpoint para verificación de salud del servicio
+    """
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': config.APP_VERSION,
+        'ai_enabled': config.AI_ANALYSIS_ENABLED
+    }), 200
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

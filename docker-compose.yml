@@ -1,16 +1,20 @@
-# Dashboard IT - Clínica Bonsana
-# Docker Compose para orquestación de servicios
+# Dashboard IT - Clínica Bonsana con Soporte para IA
+# Docker Compose para orquestación de servicios con Google AI Studio
 
 version: '3.8'
 
 services:
-  # Aplicación principal del dashboard
+  # Aplicación principal del dashboard con IA
   dashboard:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    container_name: dashboard_bonsana
+      args:
+        BUILD_TYPE: production
+        AI_ENABLED: ${AI_ANALYSIS_ENABLED:-true}
+        GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL:-gemini-1.5-pro}
+    container_name: dashboard_bonsana_ai
     restart: unless-stopped
     ports:
       - "8080:80"
@@ -22,25 +26,38 @@ services:
       # Montaje opcional para configuración personalizada
       - ./config.json:/app/config.json:ro
     environment:
+      # Configuración básica
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY:-default-secret-key-change-in-production}
       - DATA_DIRECTORY=/app/data
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CACHE_TIMEOUT=${CACHE_TIMEOUT:-600}
+      
+      # Configuración de IA
+      - AI_ANALYSIS_ENABLED=${AI_ANALYSIS_ENABLED:-true}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-1.5-pro}
+      - MAX_CSV_SIZE_MB=${MAX_CSV_SIZE_MB:-10}
+      - AI_ANALYSIS_TIMEOUT=${AI_ANALYSIS_TIMEOUT:-300}
     networks:
       - dashboard_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`dashboard.clinicabonsana.local`)"
       - "traefik.http.services.dashboard.loadbalancer.server.port=80"
+      - "ai.enabled=${AI_ANALYSIS_ENABLED:-true}"
+      - "ai.model=${GOOGLE_AI_MODEL:-gemini-1.5-pro}"
+    depends_on:
+      - redis
+      - postgres
 
-  # Redis para cache (opcional, para futuras mejoras)
+  # Redis para cache (recomendado para análisis IA)
   redis:
     image: redis:7-alpine
     container_name: dashboard_redis
@@ -51,14 +68,14 @@ services:
       - redis_data:/data
     networks:
       - dashboard_network
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # PostgreSQL para futuras expansiones (opcional)
+  # PostgreSQL para futuras expansiones y almacenamiento de análisis IA
   postgres:
     image: postgres:15-alpine
     container_name: dashboard_postgres
@@ -80,7 +97,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # Nginx para balanceador de carga (opcional para múltiples instancias)
+  # Nginx para balanceador de carga y cache
   nginx:
     image: nginx:alpine
     container_name: dashboard_nginx
@@ -92,6 +109,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - dashboard_logs:/var/log/nginx
+      # Configuración específica para endpoints de IA
+      - ./nginx/ai_endpoints.conf:/etc/nginx/conf.d/ai_endpoints.conf:ro
     networks:
       - dashboard_network
     depends_on:
@@ -102,7 +121,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # Prometheus para monitoreo (opcional)
+  # Prometheus para monitoreo (incluye métricas de IA)
   prometheus:
     image: prom/prometheus:latest
     container_name: dashboard_prometheus
@@ -111,6 +130,7 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/ai_rules.yml:/etc/prometheus/ai_rules.yml:ro
       - prometheus_data:/prometheus
     networks:
       - dashboard_network
@@ -121,8 +141,9 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
 
-  # Grafana para visualización de métricas (opcional)
+  # Grafana para visualización de métricas (incluye dashboards de IA)
   grafana:
     image: grafana/grafana:latest
     container_name: dashboard_grafana
@@ -132,22 +153,63 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/ai_dashboard.json:/var/lib/grafana/dashboards/ai_dashboard.json:ro
     networks:
       - dashboard_network
     depends_on:
       - prometheus
 
-# Configuración para desarrollo
+  # Worker para análisis de IA en background (opcional)
+  ai_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: dashboard_ai_worker
+    restart: unless-stopped
+    volumes:
+      - dashboard_data:/app/data
+      - dashboard_logs:/app/logs
+    environment:
+      # Configuración básica
+      - FLASK_ENV=worker
+      - SECRET_KEY=${SECRET_KEY:-default-secret-key-change-in-production}
+      
+      # Configuración de IA
+      - AI_ANALYSIS_ENABLED=${AI_ANALYSIS_ENABLED:-true}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-1.5-pro}
+      - MAX_CSV_SIZE_MB=${MAX_CSV_SIZE_MB:-10}
+      - AI_ANALYSIS_TIMEOUT=${AI_ANALYSIS_TIMEOUT:-600}
+      
+      # Configuración de worker
+      - WORKER_TYPE=ai_analysis
+      - WORKER_CONCURRENCY=2
+    networks:
+      - dashboard_network
+    depends_on:
+      - redis
+      - postgres
+    profiles:
+      - ai_worker
+    command: ["python", "-c", "print('AI Worker placeholder - implement with Celery/RQ')"]
+
+# Configuración para desarrollo con IA
   dashboard_dev:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: dashboard_bonsana_dev
+      args:
+        BUILD_TYPE: development
+        AI_ENABLED: ${AI_ANALYSIS_ENABLED:-true}
+        GOOGLE_AI_MODEL: ${GOOGLE_AI_MODEL:-gemini-1.5-pro}
+    container_name: dashboard_bonsana_dev_ai
     restart: unless-stopped
     ports:
       - "5000:5000"
@@ -157,13 +219,41 @@ services:
       - dashboard_data_dev:/app/data
       - dashboard_logs_dev:/app/logs
     environment:
+      # Configuración de desarrollo
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - USE_SAMPLE_DATA=true
+      
+      # Configuración de IA para desarrollo
+      - AI_ANALYSIS_ENABLED=${AI_ANALYSIS_ENABLED:-true}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-1.5-pro}
+      - MAX_CSV_SIZE_MB=${MAX_CSV_SIZE_MB:-5}
+      - AI_ANALYSIS_TIMEOUT=${AI_ANALYSIS_TIMEOUT:-180}
     networks:
       - dashboard_network
     profiles:
       - dev
+
+  # Servicio de pruebas para IA
+  ai_tester:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: dashboard_ai_tester
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=testing
+      - AI_ANALYSIS_ENABLED=true
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-1.5-pro}
+    networks:
+      - dashboard_network
+    profiles:
+      - testing
+    command: ["python", "test_ai.py"]
 
 # Redes
 networks:
@@ -201,20 +291,26 @@ volumes:
 
 # --- Configuración adicional para diferentes entornos ---
 
-# Para usar solo los servicios básicos (desarrollo local):
+# Para usar solo los servicios básicos con IA (desarrollo local):
 # docker-compose up dashboard redis
 
-# Para desarrollo con recarga automática:
-# docker-compose --profile dev up dashboard_dev
+# Para desarrollo con recarga automática y IA:
+# docker-compose --profile dev up dashboard_dev redis
 
-# Para producción completa:
+# Para producción completa con IA:
 # docker-compose up -d dashboard nginx redis postgres
 
-# Para monitoreo completo:
+# Para monitoreo completo con métricas de IA:
 # docker-compose up -d dashboard nginx redis prometheus grafana
 
+# Para testing de IA:
+# docker-compose --profile testing up ai_tester
+
+# Para worker de IA en background:
+# docker-compose --profile ai_worker up ai_worker
+
 ---
-# docker-compose.override.yml - Configuración específica para desarrollo
+# docker-compose.override.yml - Configuración específica para desarrollo con IA
 # Este archivo se carga automáticamente en desarrollo
 
 version: '3.8'
@@ -224,6 +320,9 @@ services:
     environment:
       - FLASK_DEBUG=1
       - LOG_LEVEL=DEBUG
+      # Configuración de IA para debugging
+      - AI_ANALYSIS_TIMEOUT=60
+      - MAX_CSV_SIZE_MB=5
     volumes:
       # Montar código fuente para desarrollo
       - .:/app
@@ -249,12 +348,28 @@ services:
     profiles:
       - dev
 
+  # Monitor de Redis para debugging de IA
+  redis_commander:
+    image: rediscommander/redis-commander:latest
+    container_name: dashboard_redis_commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - dashboard_network
+    depends_on:
+      - redis
+    profiles:
+      - dev
+
 volumes:
   pgadmin_data:
     driver: local
 
 ---
-# docker-compose.prod.yml - Configuración específica para producción
+# docker-compose.prod.yml - Configuración específica para producción con IA
 # Usar con: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
 
 version: '3.8'
@@ -269,20 +384,24 @@ services:
         max_attempts: 3
       resources:
         limits:
+          cpus: '2.0'  # Aumentado para análisis de IA
+          memory: 2G   # Aumentado para análisis de IA
+        reservations:
           cpus: '1.0'
           memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
     environment:
       - FLASK_ENV=production
       - WEB_CONCURRENCY=4
+      # Configuración de IA para producción
+      - AI_ANALYSIS_TIMEOUT=600
+      - MAX_CSV_SIZE_MB=10
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "3"
+        max-file: "5"
 
+  # Load balancer con configuración específica para IA
   nginx:
     deploy:
       restart_policy:
@@ -292,11 +411,18 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    volumes:
+      # Configuración específica para IA en producción
+      - ./nginx/prod_ai.conf:/etc/nginx/conf.d/ai_prod.conf:ro
 
   redis:
     deploy:
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          memory: 1G  # Aumentado para cache de IA
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
     logging:
       driver: "json-file"
       options:
@@ -307,29 +433,55 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          memory: 2G  # Aumentado para logs de IA
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
+  # Worker de IA para producción
+  ai_worker:
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    profiles:
+      - ai_worker
+      - production
+
 ---
-# .env.example - Variables de entorno para Docker Compose
+# .env.docker.example - Variables de entorno para Docker Compose
 # Copiar como .env y personalizar
 
 # Configuración de la aplicación
-SECRET_KEY=your-super-secret-key-here
+SECRET_KEY=your-super-secret-key-for-production
 FLASK_ENV=production
 LOG_LEVEL=INFO
 CACHE_TIMEOUT=600
 
+# Configuración de Google AI Studio
+GOOGLE_AI_API_KEY=your-google-ai-studio-api-key-here
+GOOGLE_AI_MODEL=gemini-1.5-pro
+AI_ANALYSIS_ENABLED=true
+MAX_CSV_SIZE_MB=10
+AI_ANALYSIS_TIMEOUT=300
+
 # Base de datos PostgreSQL
 POSTGRES_DB=dashboard_db
 POSTGRES_USER=dashboard_user
-POSTGRES_PASSWORD=secure_password_here
+POSTGRES_PASSWORD=secure_postgres_password_here
 
 # Grafana
-GRAFANA_PASSWORD=secure_grafana_password
+GRAFANA_PASSWORD=secure_grafana_password_here
 
 # Red y puertos
 DASHBOARD_PORT=8080
@@ -348,7 +500,7 @@ BACKUP_RETENTION_DAYS=30
 ENABLE_MONITORING=true
 PROMETHEUS_RETENTION=200h
 
-# Configuración de email (para alertas)
+# Configuración de email (para alertas de IA)
 SMTP_SERVER=smtp.clinicabonsana.com
 SMTP_PORT=587
 SMTP_USER=dashboard@clinicabonsana.com
@@ -357,3 +509,9 @@ SMTP_PASSWORD=email_password_here
 # Configuración de dominio
 DOMAIN_NAME=dashboard.clinicabonsana.com
 ENABLE_HTTPS=true
+
+# Configuración específica de IA
+AI_WORKER_ENABLED=false
+AI_CACHE_TTL=3600
+AI_MAX_CONCURRENT_REQUESTS=3
+AI_RATE_LIMIT=10

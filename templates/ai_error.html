@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error en Análisis IA - Dashboard IT</title>
+    <style>
+        :root {
+            --bonsana-red: #dc3545;
+            --bonsana-red-dark: #b02a37;
+            --bonsana-gray-light: #f8f9fa;
+            --bonsana-gray: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bonsana-gray-light) 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .error-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 3rem;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            border-top: 4px solid var(--bonsana-red);
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            color: var(--bonsana-red);
+            margin-bottom: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .error-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--bonsana-red-dark);
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            font-size: 1.1rem;
+            color: var(--bonsana-gray);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .error-details {
+            background: var(--bonsana-gray-light);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .error-details h3 {
+            color: var(--bonsana-red-dark);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-details ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .error-details li {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .error-details li::before {
+            content: "•";
+            color: var(--bonsana-red);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: var(--bonsana-red);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--bonsana-red-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .status-info {
+            background: #e8f4f8;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            color: #004085;
+        }
+
+        .footer-info {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #dee2e6;
+            color: var(--bonsana-gray);
+            font-size: 0.9rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--bonsana-red);
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .error-container {
+                padding: 2rem;
+                margin: 1rem;
+            }
+            
+            .error-title {
+                font-size: 1.5rem;
+            }
+            
+            .actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">🤖💥</div>
+        
+        <div class="logo">Clínica Bonsana - Dashboard IT</div>
+        
+        <h1 class="error-title">Error en Análisis de IA</h1>
+        
+        <p class="error-message">
+            Lo sentimos, el servicio de análisis inteligente no está disponible en este momento. 
+            Esto puede deberse a una sobrecarga temporal o problemas de conectividad.
+        </p>
+
+        <div class="status-info">
+            <strong>🔍 Estado del Sistema:</strong> Verificando disponibilidad del servicio...
+            <br>
+            <small id="timestamp"></small>
+        </div>
+
+        <div class="error-details">
+            <h3>🛠️ Posibles Causas</h3>
+            <ul>
+                <li>El servicio de Google AI Studio está temporalmente sobrecargado</li>
+                <li>Se ha alcanzado el límite de solicitudes por minuto</li>
+                <li>Problemas de conectividad con el servicio de IA</li>
+                <li>El archivo CSV es demasiado grande para procesar</li>
+                <li>Configuración de API Key inválida o expirada</li>
+            </ul>
+        </div>
+
+        <div class="error-details">
+            <h3>💡 Qué Puedes Hacer</h3>
+            <ul>
+                <li>Esperar unos minutos y volver a intentar</li>
+                <li>Verificar que tu archivo CSV sea menor a 10MB</li>
+                <li>Usar el dashboard sin análisis IA mientras tanto</li>
+                <li>Contactar al administrador si el problema persiste</li>
+            </ul>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="retryAnalysis()">
+                🔄 Reintentar Análisis
+            </button>
+            <a href="/" class="btn btn-secondary">
+                📊 Volver al Dashboard
+            </a>
+        </div>
+
+        <div class="footer-info">
+            <p><strong>Código de Error:</strong> <span id="errorCode">AI_SERVICE_UNAVAILABLE</span></p>
+            <p><strong>Referencia:</strong> <span id="errorId"></span></p>
+            <p>Si necesitas asistencia, proporciona esta información al equipo de soporte.</p>
+        </div>
+    </div>
+
+    <script>
+        // Actualizar timestamp
+        document.getElementById('timestamp').textContent = 
+            'Último check: ' + new Date().toLocaleString('es-ES');
+        
+        // Generar ID de error único
+        document.getElementById('errorId').textContent = 
+            'ERR-' + Date.now().toString(36).toUpperCase();
+
+        // Función para reintentar análisis
+        function retryAnalysis() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '⏳ Verificando...';
+            btn.disabled = true;
+            
+            // Verificar estado del servicio
+            fetch('/api/ai/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.service_available) {
+                        // Servicio disponible, redirigir de vuelta
+                        window.location.href = '/';
+                    } else {
+                        // Aún no disponible
+                        setTimeout(() => {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                            updateStatus('Servicio aún no disponible. Intenta nuevamente en unos minutos.');
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        updateStatus('Error verificando estado. Verifica tu conexión.');
+                    }, 2000);
+                });
+        }
+
+        function updateStatus(message) {
+            const statusInfo = document.querySelector('.status-info');
+            statusInfo.innerHTML = `
+                <strong>🔍 Estado del Sistema:</strong> ${message}
+                <br>
+                <small>Último check: ${new Date().toLocaleString('es-ES')}</small>
+            `;
+        }
+
+        // Auto-refresh cada 30 segundos para verificar disponibilidad
+        setInterval(() => {
+            fetch('/api/ai/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.service_available) {
+                        updateStatus('✅ Servicio restaurado! <a href="/" style="color: #28a745; text-decoration: underline;">Volver al Dashboard</a>');
+                    } else {
+                        updateStatus('⚠️ Servicio no disponible');
+                    }
+                })
+                .catch(error => {
+                    updateStatus('❌ Error verificando estado');
+                });
+        }, 30000);
+
+        // Detectar tipo de error basado en URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorType = urlParams.get('error');
+        
+        if (errorType) {
+            const errorCodes = {
+                'timeout': 'AI_ANALYSIS_TIMEOUT',
+                'rate_limit': 'AI_RATE_LIMIT_EXCEEDED', 
+                'quota': 'AI_QUOTA_EXCEEDED',
+                'invalid_key': 'AI_INVALID_API_KEY',
+                'service_down': 'AI_SERVICE_UNAVAILABLE'
+            };
+            
+            document.getElementById('errorCode').textContent = 
+                errorCodes[errorType] || 'AI_UNKNOWN_ERROR';
+        }
+
+        // Analytics simples para tracking de errores
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'ai_error', {
+                'error_code': document.getElementById('errorCode').textContent,
+                'timestamp': new Date().toISOString()
+            });
+        }
+    </script>
+</body>
+</html>

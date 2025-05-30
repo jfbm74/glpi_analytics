@@ -165,6 +165,77 @@
             background-color: var(--bonsana-red);
             color: white;
         }
+
+        /* AI Analysis Styles */
+        .ai-button {
+            background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+        }
+
+        .ai-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+            color: white;
+        }
+
+        .ai-button:disabled {
+            background: #6c757d;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .ai-analysis-card {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .ai-analysis-content {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            white-space: pre-wrap;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+        }
+
+        .ai-status-badge {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ai-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .ai-status-indicator.offline {
+            background: #dc3545;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        .analysis-metadata {
+            background: #e9ecef;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -175,7 +246,15 @@
                 <i class="bi bi-hospital me-2"></i>
                 Clínica Bonsana - Dashboard IT
             </a>
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav ms-auto d-flex align-items-center">
+                <!-- AI Status Indicator -->
+                {% if ai_enabled %}
+                <div class="ai-status-badge me-3">
+                    <div class="ai-status-indicator" id="aiStatusIndicator"></div>
+                    <small class="text-white" id="aiStatusText">Verificando AI...</small>
+                </div>
+                {% endif %}
+                
                 <span class="navbar-text text-white">
                     <i class="bi bi-calendar-today me-1"></i>
                     <span id="currentDate"></span>
@@ -185,6 +264,21 @@
     </nav>
 
     <div class="container-fluid mt-4">
+        <!-- AI Analysis Button -->
+        {% if ai_enabled %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="d-flex justify-content-center">
+                    <button class="btn ai-button btn-lg" id="aiAnalysisBtn" onclick="startAIAnalysis()">
+                        <i class="bi bi-robot me-2"></i>
+                        Generar Análisis Inteligente con IA
+                        <i class="bi bi-lightning-fill ms-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Navigation Tabs -->
         <ul class="nav nav-pills mb-4" id="viewTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -202,6 +296,13 @@
                     <i class="bi bi-exclamation-triangle me-1"></i>Validación de Datos
                 </button>
             </li>
+            {% if ai_enabled %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ai-analysis-tab" data-bs-toggle="pill" data-bs-target="#ai-analysis" type="button" role="tab">
+                    <i class="bi bi-robot me-1"></i>Análisis IA
+                </button>
+            </li>
+            {% endif %}
         </ul>
 
         <!-- Tab Content -->
@@ -447,6 +548,73 @@
                     </div>
                 </div>
             </div>
+
+            <!-- AI Analysis Tab -->
+            {% if ai_enabled %}
+            <div class="tab-pane fade" id="ai-analysis" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <h3 class="section-title">
+                            <i class="bi bi-robot me-2"></i>
+                            Análisis Inteligente con IA
+                        </h3>
+                        
+                        <div class="card ai-analysis-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-brain me-2"></i>
+                                    Insights Generados por Inteligencia Artificial
+                                </h5>
+                                <button class="btn btn-outline-primary btn-sm" onclick="startAIAnalysis()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>
+                                    Regenerar Análisis
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="aiAnalysisContent">
+                                    <div class="text-center py-5">
+                                        <i class="bi bi-robot display-1 text-muted mb-3"></i>
+                                        <h5 class="text-muted">¡Análisis IA Disponible!</h5>
+                                        <p class="text-muted">Haz clic en el botón "Generar Análisis Inteligente" para obtener insights profesionales sobre tus datos de tickets.</p>
+                                        <button class="btn ai-button" onclick="startAIAnalysis()">
+                                            <i class="bi bi-lightning-fill me-2"></i>
+                                            Iniciar Análisis
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- AI Analysis Modal -->
+    <div class="modal fade" id="aiAnalysisModal" tabindex="-1" aria-labelledby="aiAnalysisModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aiAnalysisModalLabel">
+                        <i class="bi bi-robot me-2"></i>
+                        Generando Análisis con IA
+                    </h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="mb-3">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">Analizando datos con Google AI Studio</h5>
+                    <p class="text-muted">Este proceso puede tomar entre 30-60 segundos. Por favor espera...</p>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -477,11 +645,40 @@
 
         // Data storage
         let dashboardData = {};
+        let aiAnalysisModal;
 
         // Load all data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
+            checkAIStatus();
+            
+            // Initialize modal
+            aiAnalysisModal = new bootstrap.Modal(document.getElementById('aiAnalysisModal'));
         });
+
+        async function checkAIStatus() {
+            try {
+                const response = await fetch('/api/ai/status');
+                const status = await response.json();
+                
+                const indicator = document.getElementById('aiStatusIndicator');
+                const text = document.getElementById('aiStatusText');
+                
+                if (status.service_available) {
+                    indicator.classList.remove('offline');
+                    text.textContent = 'IA Disponible';
+                } else {
+                    indicator.classList.add('offline');
+                    text.textContent = 'IA No Disponible';
+                }
+            } catch (error) {
+                console.error('Error checking AI status:', error);
+                const indicator = document.getElementById('aiStatusIndicator');
+                const text = document.getElementById('aiStatusText');
+                indicator.classList.add('offline');
+                text.textContent = 'Error IA';
+            }
+        }
 
         async function loadDashboardData() {
             try {
@@ -511,6 +708,85 @@
                 console.error('Error loading dashboard data:', error);
                 showError('Error al cargar los datos del dashboard');
             }
+        }
+
+        async function startAIAnalysis() {
+            try {
+                // Show loading modal
+                aiAnalysisModal.show();
+                
+                // Disable button
+                const button = document.getElementById('aiAnalysisBtn');
+                button.disabled = true;
+                button.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Analizando...';
+                
+                // Make API call
+                const response = await fetch('/api/ai/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                // Hide modal
+                aiAnalysisModal.hide();
+                
+                if (result.success) {
+                    displayAIAnalysis(result);
+                    showSuccess('Análisis IA completado exitosamente');
+                    
+                    // Switch to AI tab
+                    const aiTab = document.getElementById('ai-analysis-tab');
+                    if (aiTab) {
+                        aiTab.click();
+                    }
+                } else {
+                    showError(`Error en análisis IA: ${result.error}`);
+                }
+                
+            } catch (error) {
+                aiAnalysisModal.hide();
+                showError(`Error al conectar con el servicio de IA: ${error.message}`);
+            } finally {
+                // Re-enable button
+                const button = document.getElementById('aiAnalysisBtn');
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-robot me-2"></i>Generar Análisis Inteligente con IA<i class="bi bi-lightning-fill ms-2"></i>';
+            }
+        }
+
+        function displayAIAnalysis(result) {
+            const container = document.getElementById('aiAnalysisContent');
+            
+            const html = `
+                <div class="analysis-metadata">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Timestamp:</strong><br>
+                            ${new Date(result.timestamp).toLocaleString('es-ES')}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Modelo IA:</strong><br>
+                            ${result.model_used}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Registros Analizados:</strong><br>
+                            ${result.csv_rows_analyzed} tickets
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Estado:</strong><br>
+                            <span class="badge bg-success">Completado</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="ai-analysis-content">
+${result.analysis}
+                </div>
+            `;
+            
+            container.innerHTML = html;
         }
 
         function updateDashboard() {
@@ -869,8 +1145,22 @@
             document.body.insertAdjacentHTML('afterbegin', alertHtml);
         }
 
+        function showSuccess(message) {
+            const alertHtml = `
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('afterbegin', alertHtml);
+        }
+
         // Refresh data every 5 minutes
         setInterval(loadDashboardData, 5 * 60 * 1000);
+        
+        // Check AI status every 2 minutes
+        setInterval(checkAIStatus, 2 * 60 * 1000);
     </script>
 </body>
 </html>

@@ -19,6 +19,11 @@ class Config:
     CSV_ENCODING = 'utf-8'
     CSV_DELIMITER = ';'
     
+    # Configuración de Google AI Studio
+    GOOGLE_AI_API_KEY = os.environ.get('GOOGLE_AI_API_KEY')
+    GOOGLE_AI_MODEL = os.environ.get('GOOGLE_AI_MODEL') or 'gemini-1.5-pro'
+    AI_ANALYSIS_ENABLED = bool(os.environ.get('AI_ANALYSIS_ENABLED', 'True').lower() == 'true')
+    
     # Configuración de cache (para futuras implementaciones)
     CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 300))  # 5 minutos
     
@@ -75,6 +80,82 @@ class Config:
         'date_format': '%Y-%m-%d %H:%M',
         'export_formats': ['json', 'csv', 'pdf'],
         'max_export_records': 10000
+    }
+    
+    # Configuración de AI Analysis
+    AI_CONFIG = {
+        'max_csv_size_mb': 10,  # Tamaño máximo del CSV para análisis
+        'analysis_timeout': 300,  # Timeout en segundos para análisis AI
+        'prompt_template': """Contexto y Rol
+Actúa como **Director de Tecnología de la Clínica Bonsana**, una clínica especializada en fracturas. Tienes amplia experiencia en gestión de servicios IT en el sector salud y conoces los estándares de la industria para departamentos de soporte técnico en entornos clínicos.
+
+Archivos Proporcionados
+* **Datos de tickets**: Base de datos completa de tickets del sistema GLPI
+
+Solicitud de Análisis Completo
+Realiza un **análisis exhaustivo y estratégico** que incluya:
+
+1. ANÁLISIS DE RENDIMIENTO ACTUAL
+* Evalúa cada KPI (tasa de resolución, tiempo promedio, cumplimiento SLA, CSAT)
+* Analiza la distribución por tipo de incidentes, prioridades y estados
+* Examina la carga de trabajo por técnico y identifica desequilibrios
+
+2. ANÁLISIS PROFUNDO DE DATOS
+* Examina patrones temporales (horarios pico, días críticos, estacionalidad)
+* Identifica tipos de incidentes más frecuentes y sus tiempos de resolución
+* Analiza la escalabilidad del equipo y distribución de cargas
+* Detecta anomalías, outliers y casos excepcionales
+
+3. BENCHMARKING Y CONTEXTO CLÍNICO
+* Compara nuestros indicadores con estándares de la industria healthcare
+* Evalúa si los tiempos de respuesta son apropiados para un entorno clínico crítico
+* Analiza el impacto potencial en operaciones médicas y atención al paciente
+
+4. IDENTIFICACIÓN DE FORTALEZAS Y DEBILIDADES
+* **Fortalezas**: Qué estamos haciendo excepcionalmente bien
+* **Debilidades críticas**: Problemas que requieren atención inmediata
+* **Brechas operativas**: Áreas donde no cumplimos expectativas del sector salud
+
+5. ANÁLISIS DE RIESGOS
+* Identifica riesgos operacionales para la continuidad del servicio clínico
+* Evalúa vulnerabilidades en la cobertura de soporte
+* Analiza dependencias críticas y puntos de falla únicos
+
+6. OPORTUNIDADES DE MEJORA
+* Propuestas concretas para optimización de procesos
+* Recomendaciones para reducir tiempos de resolución
+* Estrategias para mejorar satisfacción del cliente interno
+* Oportunidades de automatización y eficiencia
+
+7. PLAN DE ACCIÓN ESTRATÉGICO
+Proporciona un plan estructurado con:
+* **Acciones inmediatas** (0-30 días)
+* **Mejoras a mediano plazo** (1-6 meses)
+* **Iniciativas estratégicas** (6-12 meses)
+* **Métricas de seguimiento** y KPIs recomendados
+* **Inversiones requeridas** (personal, herramientas, capacitación)
+
+8. CONSIDERACIONES ESPECÍFICAS DEL SECTOR SALUD
+* Evalúa el cumplimiento con regulaciones de salud y seguridad de datos
+* Analiza la criticidad de sistemas médicos vs. administrativos
+* Propone clasificaciones de prioridad específicas para entornos clínicos
+
+Formato de Entrega
+* **Resumen ejecutivo** (2-3 párrafos clave para la dirección)
+* **Análisis detallado** por secciones
+* **Cronograma de implementación** con responsables y recursos
+
+Objetivo Final
+Proporcionar insights accionables que permitan:
+1. Mejorar la calidad del servicio IT para staff médico
+2. Reducir interrupciones en operaciones críticas de la clínica
+3. Optimizar la inversión en recursos tecnológicos
+4. Establecer un departamento IT de clase mundial para el sector salud
+
+**Sé exhaustivo, analítico y estratégico. No omitas ningún aspecto relevante para la toma de decisiones gerenciales.**
+
+Datos de tickets:
+{csv_data}"""
     }
 
 class DevelopmentConfig(Config):
@@ -251,6 +332,10 @@ def validate_config(config):
     if not isinstance(chart_config.get('default_colors'), list):
         errors.append("Configuración de colores de gráficos inválida")
     
+    # Validar configuración de AI
+    if config.AI_ANALYSIS_ENABLED and not config.GOOGLE_AI_API_KEY:
+        errors.append("API Key de Google AI Studio no configurada")
+    
     return errors
 
 # Configuración por defecto para nuevas instalaciones
@@ -274,6 +359,10 @@ DEFAULT_CONFIG_FILE = {
         "sla_breach_threshold": 80,
         "backlog_threshold": 50,
         "low_satisfaction_threshold": 3.0
+    },
+    "ai": {
+        "analysis_enabled": True,
+        "auto_analysis_schedule": "weekly"
     }
 }
 
@@ -312,3 +401,4 @@ if __name__ == '__main__':
         print(f"Entorno: {current_config.__class__.__name__}")
         print(f"Debug: {current_config.DEBUG}")
         print(f"Directorio de datos: {current_config.DATA_DIRECTORY}")
+        print(f"AI Analysis: {current_config.AI_ANALYSIS_ENABLED}")

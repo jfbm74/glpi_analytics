@@ -1,0 +1,450 @@
+name: Dashboard IT CI/CD con IA
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Ejecutar tests diarios a las 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '18'
+
+jobs:
+  # Job para análisis de código y linting
+  code-quality:
+    name: 📝 Análisis de Código
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: 📦 Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort bandit safety
+        pip install -r requirements.txt
+    
+    - name: 🔍 Linting con flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: 🎨 Verificar formato con black
+      run: black --check --diff .
+    
+    - name: 📋 Verificar imports con isort
+      run: isort --check-only --diff .
+    
+    - name: 🔒 Análisis de seguridad con bandit
+      run: bandit -r . -x venv/,tests/
+    
+    - name: 🛡️ Verificar vulnerabilidades con safety
+      run: safety check
+
+  # Job para tests unitarios
+  unit-tests:
+    name: 🧪 Tests Unitarios
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configurar Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: 📦 Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov pytest-mock
+        pip install -r requirements.txt
+    
+    - name: 🏗️ Crear directorios de prueba
+      run: |
+        mkdir -p data logs backups
+        echo "ID;Título;Tipo;Estado;Fecha de Apertura" > data/test.csv
+        echo "1;Test;Incidencia;Resueltas;2025-05-01 10:00" >> data/test.csv
+    
+    - name: ⚡ Ejecutar tests básicos
+      run: |
+        pytest test_dashboard.py -v --tb=short
+    
+    - name: 📊 Tests con cobertura
+      run: |
+        pytest test_dashboard.py --cov=. --cov-report=xml --cov-report=html
+    
+    - name: 📤 Subir cobertura a Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Job para tests de IA (solo si hay API key)
+  ai-tests:
+    name: 🤖 Tests de IA
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' # Solo en push a main/develop
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: 📦 Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: 🏗️ Configurar entorno de prueba
+      run: |
+        mkdir -p data logs
+        cp .env.example .env
+    
+    - name: 🧪 Tests de configuración IA
+      env:
+        AI_ANALYSIS_ENABLED: 'True'
+        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        GOOGLE_AI_MODEL: 'gemini-1.5-pro'
+      run: |
+        python test_ai.py
+      continue-on-error: true # No fallar si no hay API key
+    
+    - name: 📋 Reporte de estado IA
+      env:
+        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+      run: |
+        python ai_utils.py status || echo "IA no disponible en CI"
+
+  # Job para tests de integración
+  integration-tests:
+    name: 🔗 Tests de Integración
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: 📦 Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: 🏗️ Configurar entorno
+      run: |
+        mkdir -p data logs backups
+        cp .env.example .env
+        python utils.py generate-sample data/glpi.csv --records 20
+    
+    - name: 🚀 Iniciar aplicación en background
+      run: |
+        python app.py &
+        sleep 10
+      env:
+        FLASK_ENV: testing
+        AI_ANALYSIS_ENABLED: 'False'
+    
+    - name: 🌐 Tests de endpoints
+      run: |
+        curl -f http://localhost:5000/health
+        curl -f http://localhost:5000/api/metrics
+        curl -f http://localhost:5000/api/ai/status
+
+  # Job para construir imagen Docker
+  docker-build:
+    name: 🐳 Build Docker
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests]
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🏗️ Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: 🔑 Login a Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: 🏷️ Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          clinicabonsana/dashboard-it
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: 🔨 Build y push imagen Docker
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          BUILD_TYPE=production
+          AI_ENABLED=true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job para análisis de seguridad
+  security-scan:
+    name: 🔒 Escaneo de Seguridad
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🛡️ Ejecutar Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'clinicabonsana/dashboard-it:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: 📤 Upload Trivy scan results a GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Job para deployment automático
+  deploy:
+    name: 🚀 Deploy
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, docker-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🔑 Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    
+    - name: 🚀 Deploy a ECS
+      run: |
+        # Actualizar servicio ECS con nueva imagen
+        aws ecs update-service \
+          --cluster dashboard-cluster \
+          --service dashboard-service \
+          --force-new-deployment
+    
+    - name: 📊 Verificar deployment
+      run: |
+        # Esperar que el deployment se complete
+        aws ecs wait services-stable \
+          --cluster dashboard-cluster \
+          --services dashboard-service
+    
+    - name: 🌐 Health check post-deployment
+      run: |
+        sleep 30
+        curl -f https://dashboard.clinicabonsana.com/health
+
+  # Job para tests de rendimiento
+  performance-tests:
+    name: ⚡ Tests de Rendimiento
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' # Solo en ejecución programada
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: 📦 Instalar dependencias
+      run: |
+        pip install -r requirements.txt
+        pip install locust
+    
+    - name: 🏗️ Configurar datos de prueba
+      run: |
+        mkdir -p data
+        python utils.py generate-sample data/glpi.csv --records 1000
+    
+    - name: ⚡ Ejecutar tests de carga con Locust
+      run: |
+        python app.py &
+        sleep 10
+        locust -f tests/locustfile.py --headless --users 10 --spawn-rate 2 -H http://localhost:5000 -t 30s
+      env:
+        AI_ANALYSIS_ENABLED: 'False'
+
+  # Job para monitoreo de costos IA
+  ai-cost-monitoring:
+    name: 💰 Monitoreo Costos IA
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: 📦 Instalar dependencias
+      run: |
+        pip install -r requirements.txt
+        pip install google-cloud-billing
+    
+    - name: 💰 Verificar costos de IA
+      env:
+        GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
+        COST_ALERT_THRESHOLD: ${{ vars.COST_ALERT_THRESHOLD || '10.00' }}
+      run: |
+        python scripts/monitor_ai_costs.py --threshold $COST_ALERT_THRESHOLD
+    
+    - name: 📧 Notificar si excede presupuesto
+      if: failure()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.SMTP_SERVER }}
+        server_port: ${{ secrets.SMTP_PORT }}
+        username: ${{ secrets.SMTP_USERNAME }}
+        password: ${{ secrets.SMTP_PASSWORD }}
+        subject: "⚠️ Alerta de Costos IA - Dashboard IT"
+        body: "Los costos de Google AI Studio han excedido el umbral configurado."
+        to: ${{ secrets.ADMIN_EMAIL }}
+
+  # Job para backup de datos
+  backup:
+    name: 💾 Backup de Datos
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: 📥 Checkout código
+      uses: actions/checkout@v4
+    
+    - name: 🔑 Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    
+    - name: 💾 Crear backup de datos
+      run: |
+        # Crear backup con timestamp
+        BACKUP_NAME="dashboard-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+        
+        # Simular backup de datos (en producción sería de la base de datos real)
+        mkdir -p backup-temp/data backup-temp/logs
+        echo "Backup simulado" > backup-temp/data/backup.txt
+        
+        # Comprimir backup
+        tar -czf $BACKUP_NAME backup-temp/
+        
+        # Subir a S3
+        aws s3 cp $BACKUP_NAME s3://clinica-bonsana-backups/dashboard/
+        
+        # Limpiar backups antiguos (mantener últimos 30 días)
+        aws s3 ls s3://clinica-bonsana-backups/dashboard/ --recursive \
+          | awk '$1 < "'$(date -d '30 days ago' '+%Y-%m-%d')'" {print $4}' \
+          | xargs -I {} aws s3 rm s3://clinica-bonsana-backups/{}
+
+  # Job para notificaciones
+  notify:
+    name: 📢 Notificaciones
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, deploy]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📢 Notificar a Slack - Éxito
+      if: needs.deploy.result == 'success'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "✅ Dashboard IT desplegado exitosamente con funcionalidad IA"
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+    
+    - name: 📢 Notificar a Slack - Fallo
+      if: needs.deploy.result == 'failure'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: "❌ Falló el despliegue del Dashboard IT"
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+    
+    - name: 📧 Enviar reporte por email
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.SMTP_SERVER }}
+        server_port: ${{ secrets.SMTP_PORT }}
+        username: ${{ secrets.SMTP_USERNAME }}
+        password: ${{ secrets.SMTP_PASSWORD }}
+        subject: "📊 Reporte CI/CD - Dashboard IT"
+        html_body: |
+          <h2>Reporte de Despliegue - Dashboard IT</h2>
+          <p><strong>Commit:</strong> ${{ github.sha }}</p>
+          <p><strong>Branch:</strong> ${{ github.ref_name }}</p>
+          <p><strong>Estado:</strong> ${{ job.status }}</p>
+          <p><strong>Tests Unitarios:</strong> ${{ needs.unit-tests.result }}</p>
+          <p><strong>Tests Integración:</strong> ${{ needs.integration-tests.result }}</p>
+          <p><strong>Deploy:</strong> ${{ needs.deploy.result }}</p>
+          <hr>
+          <p>Dashboard disponible en: <a href="https://dashboard.clinicabonsana.com">https://dashboard.clinicabonsana.com</a></p>
+        to: ${{ secrets.ADMIN_EMAIL }}
