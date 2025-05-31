@@ -161,9 +161,40 @@
             color: white;
         }
 
-        .trend-down {
-            background-color: var(--bonsana-red);
+        /* Charts with values */
+        .chart-container canvas {
+            position: relative;
+        }
+
+        .chart-value {
+            font-weight: bold;
+            color: #333;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .chart-value-white {
             color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Better chart animations */
+        .chart-container {
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        @keyframes chartValueFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .chart-value {
+            animation: chartValueFadeIn 0.8s ease-out 0.5s both;
         }
     </style>
 </head>
@@ -195,6 +226,11 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="analysis-tab" data-bs-toggle="pill" data-bs-target="#analysis" type="button" role="tab">
                     <i class="bi bi-graph-up me-1"></i>Análisis Detallado
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="technicians-tab" data-bs-toggle="pill" data-bs-target="#technicians" type="button" role="tab">
+                    <i class="bi bi-people me-1"></i>Estadísticas por Técnico
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -430,6 +466,72 @@
                 </div>
             </div>
 
+            <!-- Technicians Tab -->
+            <div class="tab-pane fade" id="technicians" role="tabpanel">
+                <!-- SLA por Técnico -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-shield-check me-2"></i>Cumplimiento de SLA por Técnico
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="technicianSLAStats">
+                                    <div class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Cargando estadísticas de SLA...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CSAT por Técnico -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-emoji-smile me-2"></i>Satisfacción del Cliente por Técnico
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="technicianCSATStats">
+                                    <div class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Cargando estadísticas de satisfacción...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiempo de Resolución por Técnico -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-clock-history me-2"></i>Tiempo de Resolución por Técnico
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="technicianResolutionStats">
+                                    <div class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Cargando estadísticas de resolución...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Validation Tab -->
             <div class="tab-pane fade" id="validation" role="tabpanel">
                 <div class="row">
@@ -457,6 +559,74 @@
         // Global chart configuration
         Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
         Chart.defaults.color = '#6c757d';
+        Chart.defaults.plugins.tooltip.enabled = true;
+        Chart.defaults.plugins.tooltip.mode = 'index';
+        Chart.defaults.plugins.tooltip.intersect = false;
+
+        // Global function to show values on charts
+        const showValuesPlugin = {
+            id: 'showValues',
+            afterDatasetsDraw: function(chart, args, options) {
+                if (options.display === false) return;
+                
+                const ctx = chart.ctx;
+                ctx.save();
+                
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    if (chart.getDatasetMeta(datasetIndex).hidden) return;
+                    
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    meta.data.forEach((element, index) => {
+                        const value = dataset.data[index];
+                        if (value === 0 || value === null || value === undefined) return;
+                        
+                        // Configure text style
+                        ctx.fillStyle = options.color || '#333';
+                        ctx.font = options.font || 'bold 12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        
+                        // Position calculation
+                        let x, y;
+                        if (chart.config.type === 'bar' && chart.config.options.indexAxis === 'y') {
+                            // Horizontal bar chart
+                            x = element.x + 10;
+                            y = element.y;
+                        } else if (chart.config.type === 'bar') {
+                            // Vertical bar chart
+                            x = element.x;
+                            y = element.y - 10;
+                        } else if (chart.config.type === 'doughnut' || chart.config.type === 'pie') {
+                            // Doughnut/Pie chart
+                            const position = element.tooltipPosition();
+                            x = position.x;
+                            y = position.y;
+                            ctx.fillStyle = 'white';
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 2;
+                        }
+                        
+                        // Draw value
+                        if (chart.config.type === 'doughnut' || chart.config.type === 'pie') {
+                            const total = dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            
+                            ctx.strokeText(`${value}`, x, y - 8);
+                            ctx.fillText(`${value}`, x, y - 8);
+                            ctx.strokeText(`(${percentage}%)`, x, y + 8);
+                            ctx.fillText(`(${percentage}%)`, x, y + 8);
+                        } else {
+                            ctx.fillText(value.toString(), x, y);
+                        }
+                    });
+                });
+                
+                ctx.restore();
+            }
+        };
+
+        // Register the plugin globally
+        Chart.register(showValuesPlugin);
 
         const colors = {
             primary: '#dc3545',
@@ -465,7 +635,8 @@
             warning: '#ffc107',
             info: '#17a2b8',
             light: '#f8f9fa',
-            dark: '#343a40'
+            dark: '#343a40',
+            orange: '#ff6b35'  // Color para tickets sin asignar
         };
 
         // Set current date
@@ -486,14 +657,17 @@
         async function loadDashboardData() {
             try {
                 // Load all data in parallel
-                const [metrics, distributions, technicians, requesters, sla, csat, validation] = await Promise.all([
+                const [metrics, distributions, technicians, requesters, sla, csat, validation, techSLA, techCSAT, techResolution] = await Promise.all([
                     fetch('/api/metrics').then(r => r.json()),
                     fetch('/api/distributions').then(r => r.json()),
                     fetch('/api/technicians').then(r => r.json()),
                     fetch('/api/requesters').then(r => r.json()),
                     fetch('/api/sla').then(r => r.json()),
                     fetch('/api/csat').then(r => r.json()),
-                    fetch('/api/validation').then(r => r.json())
+                    fetch('/api/validation').then(r => r.json()),
+                    fetch('/api/technicians/sla').then(r => r.json()),
+                    fetch('/api/technicians/csat').then(r => r.json()),
+                    fetch('/api/technicians/resolution-time').then(r => r.json())
                 ]);
 
                 dashboardData = {
@@ -503,7 +677,10 @@
                     requesters,
                     sla,
                     csat,
-                    validation
+                    validation,
+                    technicianSLA: techSLA,
+                    technicianCSAT: techCSAT,
+                    technicianResolution: techResolution
                 };
 
                 updateDashboard();
@@ -517,6 +694,7 @@
             updateMetrics();
             updateCharts();
             updateAnalysis();
+            updateTechnicianStats();
             updateValidation();
         }
 
@@ -559,6 +737,20 @@
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.raw / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.raw} (${percentage}%)`;
+                                }
+                            }
+                        },
+                        showValues: {
+                            display: true,
+                            color: 'white',
+                            font: 'bold 11px Arial'
                         }
                     }
                 }
@@ -575,7 +767,7 @@
                     labels: Object.keys(data),
                     datasets: [{
                         data: Object.values(data),
-                        backgroundColor: [colors.success, colors.primary, colors.warning],
+                        backgroundColor: [colors.success, colors.primary, colors.warning, colors.info, colors.secondary],
                         borderWidth: 1,
                         borderColor: '#fff'
                     }]
@@ -586,6 +778,18 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw} tickets`;
+                                }
+                            }
+                        },
+                        showValues: {
+                            display: true,
+                            color: '#333',
+                            font: 'bold 12px Arial'
                         }
                     },
                     scales: {
@@ -618,6 +822,20 @@
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.raw / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.raw} (${percentage}%)`;
+                                }
+                            }
+                        },
+                        showValues: {
+                            display: true,
+                            color: 'white',
+                            font: 'bold 11px Arial'
                         }
                     }
                 }
@@ -628,18 +846,45 @@
             const ctx = document.getElementById('technicianChart').getContext('2d');
             const data = dashboardData.technicians || {};
             
-            // Limit to top 5 technicians for readability
-            const sortedTechnicians = Object.entries(data)
+            // Separar técnicos asignados de tickets sin asignar
+            const assignedTechnicians = {};
+            let unassignedCount = 0;
+            
+            Object.entries(data).forEach(([name, count]) => {
+                if (name === 'SIN ASIGNAR') {
+                    unassignedCount = count;
+                } else {
+                    assignedTechnicians[name] = count;
+                }
+            });
+            
+            // Ordenar técnicos por cantidad (excluyendo sin asignar)
+            const sortedTechnicians = Object.entries(assignedTechnicians)
                 .sort(([,a], [,b]) => b - a)
                 .slice(0, 5);
+            
+            // Agregar tickets sin asignar al final si existen
+            if (unassignedCount > 0) {
+                sortedTechnicians.push(['SIN ASIGNAR', unassignedCount]);
+            }
+            
+            // Preparar colores - especial para tickets sin asignar
+            const backgroundColors = sortedTechnicians.map(([name]) => 
+                name === 'SIN ASIGNAR' ? colors.orange : colors.primary
+            );
             
             new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: sortedTechnicians.map(([name]) => name.length > 15 ? name.substring(0, 15) + '...' : name),
+                    labels: sortedTechnicians.map(([name]) => {
+                        if (name === 'SIN ASIGNAR') {
+                            return '⚠️ SIN ASIGNAR';
+                        }
+                        return name.length > 15 ? name.substring(0, 15) + '...' : name;
+                    }),
                     datasets: [{
                         data: sortedTechnicians.map(([,count]) => count),
-                        backgroundColor: colors.primary,
+                        backgroundColor: backgroundColors,
                         borderWidth: 1,
                         borderColor: '#fff'
                     }]
@@ -651,6 +896,23 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const name = sortedTechnicians[context.dataIndex][0];
+                                    const count = context.parsed.x;
+                                    if (name === 'SIN ASIGNAR') {
+                                        return `Tickets sin asignar: ${count}`;
+                                    }
+                                    return `${name}: ${count} tickets`;
+                                }
+                            }
+                        },
+                        showValues: {
+                            display: true,
+                            color: '#333',
+                            font: 'bold 12px Arial'
                         }
                     },
                     scales: {
@@ -687,6 +949,18 @@
                         plugins: {
                             legend: {
                                 display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.raw} encuestas`;
+                                    }
+                                }
+                            },
+                            showValues: {
+                                display: true,
+                                color: '#333',
+                                font: 'bold 12px Arial'
                             }
                         },
                         scales: {
@@ -726,6 +1000,19 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const categoryName = sortedCategories[context.dataIndex][0];
+                                    return `${categoryName}: ${context.parsed.x} tickets`;
+                                }
+                            }
+                        },
+                        showValues: {
+                            display: true,
+                            color: '#333',
+                            font: 'bold 12px Arial'
                         }
                     },
                     scales: {
@@ -834,6 +1121,177 @@
             }
             
             container.innerHTML = html || '<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>No se encontraron problemas de calidad en los datos</div>';
+        }
+
+        function updateTechnicianStats() {
+            updateTechnicianSLA();
+            updateTechnicianCSAT();
+            updateTechnicianResolution();
+        }
+
+        function updateTechnicianSLA() {
+            const container = document.getElementById('technicianSLAStats');
+            const data = dashboardData.technicianSLA || {};
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de SLA por técnico disponibles</div>';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-striped">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>Técnico</th>
+                        <th>Total Incidencias</th>
+                        <th>Cumplimiento SLA</th>
+                        <th>SLA Excedido</th>
+                        <th>% Cumplimiento</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            Object.entries(data).forEach(([technician, stats]) => {
+                const performanceClass = stats.compliance_rate >= 90 ? 'success' : 
+                                       stats.compliance_rate >= 70 ? 'warning' : 'danger';
+                const performanceIcon = stats.compliance_rate >= 90 ? 'bi-check-circle' : 
+                                      stats.compliance_rate >= 70 ? 'bi-exclamation-triangle' : 'bi-x-circle';
+                
+                html += `
+                    <tr>
+                        <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
+                        <td><span class="badge bg-primary">${stats.total_incidents}</span></td>
+                        <td><span class="badge bg-success">${stats.sla_compliant}</span></td>
+                        <td><span class="badge bg-danger">${stats.sla_exceeded}</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="progress me-2" style="width: 60px; height: 6px;">
+                                    <div class="progress-bar bg-${performanceClass}" style="width: ${stats.compliance_rate}%"></div>
+                                </div>
+                                <span class="text-${performanceClass} fw-bold">${stats.compliance_rate}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <i class="bi ${performanceIcon} text-${performanceClass}"></i>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        function updateTechnicianCSAT() {
+            const container = document.getElementById('technicianCSATStats');
+            const data = dashboardData.technicianCSAT || {};
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de satisfacción por técnico disponibles</div>';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-striped">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>Técnico</th>
+                        <th>Total Encuestas</th>
+                        <th>CSAT Promedio</th>
+                        <th>Excelentes (4-5⭐)</th>
+                        <th>Pobres (1-2⭐)</th>
+                        <th>Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            Object.entries(data).forEach(([technician, stats]) => {
+                const csatClass = stats.average_csat >= 4 ? 'success' : 
+                                stats.average_csat >= 3 ? 'warning' : 'danger';
+                const stars = '⭐'.repeat(Math.round(stats.average_csat));
+                
+                html += `
+                    <tr>
+                        <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
+                        <td><span class="badge bg-info">${stats.total_surveys}</span></td>
+                        <td>
+                            <span class="text-${csatClass} fw-bold">${stats.average_csat}</span>
+                            <small class="text-muted ms-1">${stars}</small>
+                        </td>
+                        <td><span class="badge bg-success">${stats.excellent_ratings}</span></td>
+                        <td><span class="badge bg-danger">${stats.poor_ratings}</span></td>
+                        <td>
+                            <div class="progress" style="width: 80px; height: 6px;">
+                                <div class="progress-bar bg-${csatClass}" style="width: ${(stats.average_csat / 5) * 100}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        function updateTechnicianResolution() {
+            const container = document.getElementById('technicianResolutionStats');
+            const data = dashboardData.technicianResolution || {};
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de tiempo de resolución por técnico disponibles</div>';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-striped">';
+            html += `
+                <thead>
+                    <tr>
+                        <th>Técnico</th>
+                        <th>Total Resueltos</th>
+                        <th>Tiempo Promedio</th>
+                        <th>Mín / Máx</th>
+                        <th>Rápidas (<24h)</th>
+                        <th>Lentas (>72h)</th>
+                        <th>Eficiencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            Object.entries(data).forEach(([technician, stats]) => {
+                const efficiencyScore = (stats.fast_resolutions / stats.total_resolved) * 100;
+                const efficiencyClass = efficiencyScore >= 70 ? 'success' : 
+                                      efficiencyScore >= 40 ? 'warning' : 'danger';
+                
+                html += `
+                    <tr>
+                        <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
+                        <td><span class="badge bg-primary">${stats.total_resolved}</span></td>
+                        <td class="fw-bold">${stats.avg_resolution_hours}h</td>
+                        <td>
+                            <small class="text-muted">
+                                ${stats.min_resolution_hours}h / ${stats.max_resolution_hours}h
+                            </small>
+                        </td>
+                        <td><span class="badge bg-success">${stats.fast_resolutions}</span></td>
+                        <td><span class="badge bg-warning">${stats.slow_resolutions}</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="progress me-2" style="width: 60px; height: 6px;">
+                                    <div class="progress-bar bg-${efficiencyClass}" style="width: ${efficiencyScore}%"></div>
+                                </div>
+                                <span class="text-${efficiencyClass} fw-bold">${Math.round(efficiencyScore)}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
         }
 
         function createInsightCard(title, count, recommendation, icon, type) {
