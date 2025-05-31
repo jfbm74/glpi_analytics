@@ -1,314 +1,215 @@
 #!/usr/bin/env python3
 """
-Configuración de la aplicación Dashboard IT - Clínica Bonsana
+Configuración para Dashboard IT - Clínica Bonsana
 """
 
 import os
 from datetime import timedelta
 
 class Config:
-    """Configuración base para la aplicación"""
+    """Configuración base"""
     
-    # Configuración básica de Flask
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-clinica-bonsana-2025'
-    DEBUG = False
-    TESTING = False
+    # Configuración del servidor Flask
+    DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    HOST = os.environ.get('FLASK_HOST', '0.0.0.0')
+    PORT = int(os.environ.get('FLASK_PORT', 5000))
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'bonsana-dashboard-secret-key-2024')
     
     # Configuración de datos
-    DATA_DIRECTORY = os.environ.get('DATA_DIRECTORY') or 'data'
-    CSV_ENCODING = 'utf-8'
-    CSV_DELIMITER = ';'
+    DATA_PATH = os.environ.get('DATA_PATH', 'data')
+    ALLOWED_EXTENSIONS = ['.csv']
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
     
-    # Configuración de cache (para futuras implementaciones)
-    CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 300))  # 5 minutos
-    
-    # Configuración de logs
+    # Configuración de logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FILE = os.environ.get('LOG_FILE', 'dashboard.log')
+    LOG_FILE = os.path.join('logs', 'dashboard.log')
+    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
+    LOG_BACKUP_COUNT = 5
     
     # Configuración de la aplicación
     APP_NAME = 'Dashboard IT - Clínica Bonsana'
-    APP_VERSION = '1.0.0'
+    VERSION = '1.0.0'
+    TIMEZONE = 'America/Bogota'
     
-    # Configuración de métricas
+    # Configuración de cache
+    CACHE_TIMEOUT = timedelta(minutes=5)
+    ENABLE_CACHE = True
+    
+    # Colores corporativos Clínica Bonsana
+    CORPORATE_COLORS = {
+        'primary': '#dc3545',           # Rojo Bonsana
+        'primary_light': '#f8d7da',     # Rojo claro
+        'primary_dark': '#b02a37',      # Rojo oscuro
+        'secondary': '#6c757d',         # Gris
+        'success': '#28a745',           # Verde
+        'warning': '#ffc107',           # Amarillo
+        'info': '#17a2b8',             # Azul
+        'light': '#f8f9fa',            # Gris claro
+        'dark': '#343a40',             # Gris oscuro
+        'white': '#ffffff'             # Blanco
+    }
+    
+    # Configuración de métricas y KPIs
     METRICS_CONFIG = {
-        'resolution_states': ['Resueltas', 'Cerrado'],
-        'sla_incident_type': 'Incidencia',
-        'satisfaction_scale': {'min': 1, 'max': 5},
-        'csat_target': 4.0,
-        'sla_compliance_target': 95.0,
-        'resolution_rate_target': 90.0
+        # Estados considerados como resueltos
+        'resolved_states': ['Resueltas', 'Cerrado'],
+        
+        # Tipos de ticket que son incidencias (para SLA)
+        'incident_types': ['Incidencia'],
+        
+        # Umbrales de rendimiento SLA
+        'sla_excellent_threshold': 90,  # >= 90% es excelente
+        'sla_good_threshold': 70,       # >= 70% es bueno
+        'sla_poor_threshold': 50,       # < 50% es pobre
+        
+        # Umbrales de satisfacción CSAT
+        'csat_excellent_threshold': 4.0,  # >= 4.0 es excelente
+        'csat_good_threshold': 3.0,       # >= 3.0 es bueno
+        'csat_poor_threshold': 2.0,       # < 2.0 es pobre
+        
+        # Umbrales de tiempo de resolución (en horas)
+        'resolution_fast_threshold': 24,    # <= 24h es rápido
+        'resolution_slow_threshold': 72,    # > 72h es lento
+        
+        # Límites para gráficos y tablas
+        'max_categories_chart': 10,
+        'max_technicians_chart': 10,
+        'max_requesters_list': 15,
+        
+        # Configuración de tendencias
+        'trend_period_days': 30,
+        'min_data_points': 5
     }
     
-    # Configuración de visualización
-    CHART_CONFIG = {
-        'default_colors': [
-            '#dc3545',  # Bonsana Red
-            '#28a745',  # Success Green
-            '#ffc107',  # Warning Yellow
-            '#17a2b8',  # Info Blue
-            '#6c757d',  # Gray
-            '#fd7e14',  # Orange
-            '#6f42c1',  # Purple
-            '#20c997'   # Teal
+    # Configuración de columnas CSV
+    CSV_COLUMNS = {
+        'required': [
+            'ID',
+            'Título',
+            'Tipo',
+            'Categoría',
+            'Prioridad',
+            'Estado',
+            'Fecha de Apertura',
+            'Fecha de solución',
+            'Se superó el tiempo de resolución',
+            'Asignado a: - Técnico',
+            'Solicitante - Solicitante'
         ],
-        'max_categories_display': 10,
-        'max_technicians_display': 8,
-        'max_requesters_display': 5
+        'optional': [
+            'Elementos asociados',
+            'ANS (Acuerdo de nivel de servicio) - ANS (Acuerdo de nivel de servicio) Tiempo de solución',
+            'Encuesta de satisfacción - Satisfacción',
+            'Tiempo de solución',
+            'Duración total',
+            'Última actualización',
+            'Estadísticas - Tiempo de solución',
+            'Costo - Costo de material',
+            'Costo - Costo total'
+        ],
+        'aliases': {
+            # Mapeo de nombres alternativos de columnas
+            'Tecnico': 'Asignado a: - Técnico',
+            'Solicitante': 'Solicitante - Solicitante',
+            'SLA': 'Se superó el tiempo de resolución',
+            'CSAT': 'Encuesta de satisfacción - Satisfacción',
+            'ANS': 'ANS (Acuerdo de nivel de servicio) - ANS (Acuerdo de nivel de servicio) Tiempo de solución'
+        }
     }
     
-    # Configuración de calidad de datos
-    DATA_QUALITY_CONFIG = {
-        'completeness_threshold': 90.0,  # % mínimo de completitud
-        'required_fields': [
-            'ID', 'Título', 'Tipo', 'Estado', 'Fecha de Apertura'
-        ],
-        'hardware_keywords': [
-            'Impresora', 'Computador', 'Equipo', 'Hardware', 'PC', 
-            'Monitor', 'Servidor', 'Router', 'Switch'
+    # Configuración de formato de datos
+    DATA_FORMATS = {
+        'date_format': '%Y-%m-%d %H:%M',
+        'csv_delimiter': ';',
+        'csv_encoding': 'utf-8',
+        'decimal_places': 2,
+        'percentage_decimal_places': 1
+    }
+    
+    # Configuración de la interfaz de usuario
+    UI_CONFIG = {
+        'charts_height': {
+            'small': 250,
+            'medium': 300,
+            'large': 400
+        },
+        'table_page_size': 50,
+        'animation_duration': 300,
+        'refresh_interval': 300000,  # 5 minutos en millisegundos
+        'chart_colors': [
+            '#dc3545', '#17a2b8', '#28a745', '#ffc107', 
+            '#6c757d', '#e83e8c', '#fd7e14', '#6f42c1'
         ]
     }
     
-    # Configuración de reportes
-    REPORT_CONFIG = {
-        'auto_refresh_interval': 300000,  # 5 minutos en millisegundos
-        'date_format': '%Y-%m-%d %H:%M',
-        'export_formats': ['json', 'csv', 'pdf'],
-        'max_export_records': 10000
+    # Configuración de exportación
+    EXPORT_CONFIG = {
+        'formats': ['json', 'csv', 'xlsx'],
+        'max_records': 10000,
+        'filename_prefix': 'dashboard_export_',
+        'include_metadata': True
+    }
+    
+    # Configuración de seguridad
+    SECURITY_CONFIG = {
+        'enable_cors': True,
+        'allowed_origins': ['http://localhost:*', 'http://127.0.0.1:*'],
+        'rate_limit': '100/minute',
+        'enable_csrf': False,  # Deshabilitado para API
+        'max_request_size': 16 * 1024 * 1024  # 16MB
+    }
+    
+    # Configuración de backup
+    BACKUP_CONFIG = {
+        'enable_auto_backup': True,
+        'backup_interval_hours': 24,
+        'max_backup_files': 7,
+        'backup_path': 'backups',
+        'include_logs': True
     }
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo"""
     DEBUG = True
     LOG_LEVEL = 'DEBUG'
-    
-    # Configuración de desarrollo
-    FLASK_ENV = 'development'
-    TEMPLATES_AUTO_RELOAD = True
-    
-    # Base de datos en memoria para desarrollo rápido
-    USE_SAMPLE_DATA = os.environ.get('USE_SAMPLE_DATA', 'False').lower() == 'true'
+    CACHE_TIMEOUT = timedelta(seconds=30)  # Cache más corto en desarrollo
 
 class ProductionConfig(Config):
     """Configuración para producción"""
     DEBUG = False
-    TESTING = False
-    
-    # Configuración de seguridad
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
-    
-    # Configuración de logging para producción
     LOG_LEVEL = 'WARNING'
-    LOG_TO_FILE = True
-    LOG_ROTATION = True
-    LOG_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT = 5
+    HOST = '0.0.0.0'
+    PORT = 80
+    CACHE_TIMEOUT = timedelta(minutes=15)  # Cache más largo en producción
     
-    # Configuración de rendimiento
-    CACHE_TIMEOUT = 600  # 10 minutos en producción
-    COMPRESS_RESPONSES = True
-    
-    # Configuración de monitoreo
-    ENABLE_METRICS = True
-    HEALTH_CHECK_ENDPOINT = '/health'
+    # Configuración de seguridad para producción
+    SECURITY_CONFIG = {
+        **Config.SECURITY_CONFIG,
+        'enable_csrf': True,
+        'rate_limit': '50/minute',  # Más restrictivo
+        'allowed_origins': []  # Debe configurarse específicamente
+    }
 
 class TestingConfig(Config):
-    """Configuración para pruebas"""
-    TESTING = True
+    """Configuración para testing"""
     DEBUG = True
-    
-    # Datos de prueba
-    DATA_DIRECTORY = 'tests/data'
-    USE_SAMPLE_DATA = True
-    
-    # Configuración de logs para pruebas
+    TESTING = True
+    DATA_PATH = 'test_data'
     LOG_LEVEL = 'ERROR'
-    SUPPRESS_LOGS = True
+    CACHE_TIMEOUT = timedelta(seconds=1)  # Cache muy corto para tests
 
-# Configuración de la base de datos (para futuras expansiones)
-class DatabaseConfig:
-    """Configuración para conexión a base de datos (futuro)"""
-    
-    # SQLite para desarrollo
-    SQLITE_DATABASE = os.environ.get('SQLITE_DATABASE', 'dashboard.db')
-    
-    # PostgreSQL para producción
-    POSTGRES_USER = os.environ.get('POSTGRES_USER', 'dashboard_user')
-    POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', '')
-    POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
-    POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
-    POSTGRES_DATABASE = os.environ.get('POSTGRES_DATABASE', 'dashboard_db')
-    
-    @property
-    def postgres_url(self):
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE}"
-
-# Configuración de email (para futuras notificaciones)
-class EmailConfig:
-    """Configuración para notificaciones por email (futuro)"""
-    
-    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'dashboard@clinicabonsana.com')
-    
-    # Configuración de alertas
-    ALERT_RECIPIENTS = os.environ.get('ALERT_RECIPIENTS', '').split(',')
-    SLA_BREACH_ALERT = os.environ.get('SLA_BREACH_ALERT', 'True').lower() == 'true'
-    DAILY_REPORT_ENABLED = os.environ.get('DAILY_REPORT_ENABLED', 'False').lower() == 'true'
-
-# Configuración de seguridad
-class SecurityConfig:
-    """Configuración de seguridad (para futuras implementaciones)"""
-    
-    # Autenticación
-    ENABLE_AUTH = os.environ.get('ENABLE_AUTH', 'False').lower() == 'true'
-    AUTH_METHOD = os.environ.get('AUTH_METHOD', 'basic')  # basic, ldap, oauth
-    
-    # LDAP (para integración con Active Directory)
-    LDAP_HOST = os.environ.get('LDAP_HOST', '')
-    LDAP_PORT = int(os.environ.get('LDAP_PORT', 389))
-    LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', '')
-    LDAP_USER_OBJECT_FILTER = os.environ.get('LDAP_USER_OBJECT_FILTER', '(objectclass=person)')
-    
-    # Roles y permisos
-    ADMIN_USERS = os.environ.get('ADMIN_USERS', '').split(',')
-    READONLY_USERS = os.environ.get('READONLY_USERS', '').split(',')
-    
-    # Rate limiting
-    RATE_LIMIT_ENABLED = os.environ.get('RATE_LIMIT_ENABLED', 'False').lower() == 'true'
-    RATE_LIMIT_DEFAULT = os.environ.get('RATE_LIMIT_DEFAULT', '100 per hour')
-
-# Función para obtener la configuración apropiada
-def get_config():
-    """
-    Retorna la configuración apropiada basada en el entorno
-    """
-    env = os.environ.get('FLASK_ENV', 'development').lower()
-    
-    if env == 'production':
-        return ProductionConfig()
-    elif env == 'testing':
-        return TestingConfig()
-    else:
-        return DevelopmentConfig()
-
-# Configuraciones adicionales por entorno
-config_dict = {
+# Mapeo de configuraciones
+config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
 
-def load_config_from_file(config_file_path):
-    """
-    Carga configuración adicional desde archivo JSON
-    
-    Args:
-        config_file_path (str): Ruta al archivo de configuración
-        
-    Returns:
-        dict: Configuración cargada
-    """
-    try:
-        import json
-        with open(config_file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Warning: No se pudo cargar configuración desde {config_file_path}: {e}")
-        return {}
+def get_config():
+    """Obtiene la configuración basada en la variable de entorno"""
+    env = os.environ.get('FLASK_ENV', 'default')
+    return config.get(env, DevelopmentConfig)
 
-# Validación de configuración
-def validate_config(config):
-    """
-    Valida que la configuración sea correcta
-    
-    Args:
-        config: Objeto de configuración
-        
-    Returns:
-        list: Lista de errores encontrados
-    """
-    errors = []
-    
-    # Validar directorio de datos
-    if not os.path.exists(config.DATA_DIRECTORY):
-        errors.append(f"Directorio de datos no existe: {config.DATA_DIRECTORY}")
-    
-    # Validar configuración de métricas
-    metrics_config = config.METRICS_CONFIG
-    if not isinstance(metrics_config.get('satisfaction_scale', {}).get('min'), int):
-        errors.append("Configuración de escala de satisfacción inválida")
-    
-    # Validar configuración de colores
-    chart_config = config.CHART_CONFIG
-    if not isinstance(chart_config.get('default_colors'), list):
-        errors.append("Configuración de colores de gráficos inválida")
-    
-    return errors
-
-# Configuración por defecto para nuevas instalaciones
-DEFAULT_CONFIG_FILE = {
-    "app": {
-        "name": "Dashboard IT - Clínica Bonsana",
-        "version": "1.0.0",
-        "description": "Sistema de monitoreo y análisis de tickets de soporte IT"
-    },
-    "data": {
-        "auto_backup": True,
-        "backup_retention_days": 30,
-        "data_validation_enabled": True
-    },
-    "ui": {
-        "theme": "bonsana",
-        "auto_refresh": True,
-        "refresh_interval": 300
-    },
-    "alerts": {
-        "sla_breach_threshold": 80,
-        "backlog_threshold": 50,
-        "low_satisfaction_threshold": 3.0
-    }
-}
-
-def create_default_config_file(file_path):
-    """
-    Crea un archivo de configuración por defecto
-    
-    Args:
-        file_path (str): Ruta donde crear el archivo
-    """
-    import json
-    
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(DEFAULT_CONFIG_FILE, f, indent=2, ensure_ascii=False)
-        print(f"Archivo de configuración creado: {file_path}")
-    except Exception as e:
-        print(f"Error al crear archivo de configuración: {e}")
-
-if __name__ == '__main__':
-    # Crear archivo de configuración por defecto si no existe
-    config_file = 'config.json'
-    if not os.path.exists(config_file):
-        create_default_config_file(config_file)
-    
-    # Validar configuración actual
-    current_config = get_config()
-    errors = validate_config(current_config)
-    
-    if errors:
-        print("Errores en la configuración:")
-        for error in errors:
-            print(f"  - {error}")
-    else:
-        print("Configuración válida")
-        print(f"Entorno: {current_config.__class__.__name__}")
-        print(f"Debug: {current_config.DEBUG}")
-        print(f"Directorio de datos: {current_config.DATA_DIRECTORY}")
+# Configuración activa
+active_config = get_config()

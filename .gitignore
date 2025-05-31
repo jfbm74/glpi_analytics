@@ -1,24 +1,28 @@
 # Dashboard IT - Clínica Bonsana
-# Archivos y directorios a ignorar en Git
+# Archivo .gitignore
 
 # Archivos de datos sensibles
 data/*.csv
 data/*.xlsx
-data/*.json
-backups/
-exports/
+data/*.xls
+!data/sample_*.csv
+!data/.gitkeep
 
-# Archivos de configuración con información sensible
+# Archivos de configuración sensibles
+config_local.py
 .env
-config.json
-secrets/
+.env.local
+.env.production
 
 # Logs
 logs/
 *.log
-*.log.*
 
-# Cache y archivos temporales
+# Backups
+backups/
+*.backup
+
+# Archivos temporales de Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -41,24 +45,61 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# PyInstaller
+*.manifest
+*.spec
+
+# Entornos virtuales
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
-.virtualenv
-.conda
+.venv
 
-# IDEs
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# IDEs y editores
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.project
-.pydevproject
-.settings/
 
 # Sistema operativo
 .DS_Store
@@ -68,157 +109,125 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
-desktop.ini
 
-# Jupyter Notebooks
-.ipynb_checkpoints
-*.ipynb
+# Archivos de Windows
+*.lnk
 
-# Documentación generada
-docs/_build/
-.readthedocs.yml
+# Archivos temporales
+*.tmp
+*.temp
+temp/
+tmp/
 
-# Testing
-.coverage
-.pytest_cache/
-.tox/
-htmlcov/
-.nox/
-coverage.xml
-*.cover
-.hypothesis/
+# Archivos de prueba
+test_data/
+testing/
+*_test.csv
 
-# Flask
-instance/
-.webassets-cache
-.flask_session
+# Certificados SSL (si se usan)
+*.pem
+*.key
+*.crt
+*.cert
 
 # Archivos de base de datos
 *.db
 *.sqlite
 *.sqlite3
 
-# Reportes y exports
-reports/
-exports/
-*.pdf
-*.docx
+# Archivos de cache
+.cache/
+*.cache
 
-# Archivos de configuración específicos del servidor
-supervisor.conf
+# Archivos de reportes generados
+reportes/*.pdf
+reportes/*.xlsx
+reportes/*.json
+!reportes/.gitkeep
+
+# Archivos de exportación
+exports/
+*.export
+
+# Archivos de configuración de servidor web
 nginx.conf
 apache.conf
+.htaccess
 
-# SSL certificates
-*.pem
-*.key
-*.crt
-*.p12
+# Archivos de Docker (para futuras versiones)
+.dockerignore
+docker-compose.override.yml
 
-# Archivos de backup automático
-*.bak
-*.backup
-*~
+# Variables de entorno específicas del proyecto
+.env.bonsana
+.env.development
+.env.testing
 
 # Archivos de monitoreo
 monitoring/
-metrics/
+*.pid
 
-# Docker
-.dockerignore
-Dockerfile.prod
-
-# Archivos de datos de ejemplo (mantener solo en desarrollo)
-# Descomentar si no quieres que los datos de ejemplo se suban
-# data/sample_*.csv
-# data/test_*.csv
-
-# Archivos de configuración locales
-local_config.py
-development.cfg
-production.cfg
-
-# Archivos temporales de la aplicación
-temp/
-tmp/
-cache/
-
-# Archivos de usuario específicos
-user_data/
-user_exports/
-user_reports/
-
-# Archivos de sesión
+# Archivos de sesión de Flask
 flask_session/
-sessions/
 
-# Archivos de error dumps
-error_dumps/
-crash_reports/
+# Archivos de upload temporales
+uploads/
+temp_uploads/
 
-# Archivos de profiling
+# Archivos de instalación específicos del sistema
+install.log
+setup.log
+
+# Archivos de benchmark y profiling
+profile_results/
+benchmark_results/
 *.prof
-profile_*.txt
 
-# Archivos de migración (si se usa Alembic en futuro)
-migrations/versions/
+# Documentación generada automáticamente
+docs/_build/
+docs/auto/
 
-# Archivos de traducción compilados
-*.mo
+# Archivos específicos de Clínica Bonsana (datos reales)
+data/clinica_bonsana_*.csv
+data/glpi_real_*.csv
+data/produccion_*.csv
 
-# Archivos de media generados dinámicamente
-media/generated/
-static/generated/
+# Credenciales y tokens
+tokens.json
+credentials.json
+auth.json
 
-# Archivos de configuración del servidor web
-uwsgi.ini
-gunicorn.conf.py
+# Archivos de estado de la aplicación
+state/
+status/
+.status
 
-# Archivos de monitoreo de rendimiento
-newrelic.ini
-datadog.conf
+# Archivos de migración de datos
+migrations/
+migration_*.json
 
-# Archivos de backup de la base de datos
-db_backup_*
-*.sql.gz
+# Archivos de configuración de terceros
+.flaskenv
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Archivos específicos del entorno de desarrollo
+development/
+dev_tools/
+debug/
+
+# Archivos de respaldo automático
+*.bak
+*.backup
+auto_backup_*
 
 # Archivos de configuración de CI/CD
-.github/workflows/deploy.yml
-.gitlab-ci-local.yml
+.github/workflows/
+.gitlab-ci.yml
+.travis.yml
+circle.yml
 
 # Archivos de análisis de código
 .sonarqube/
-.scannerwork/
-
-# Archivos de dependencias locales
-pip-selfcheck.json
-pyvenv.cfg
-
-# Archivos de configuración de editores
-.editorconfig
-.prettierrc
-
-# Archivos de documentación personal
-NOTES.md
-TODO.md
-personal_notes/
-
-# Archivos de configuración de herramientas de desarrollo
-.black
-.isort.cfg
-setup.cfg
-pyproject.toml
-
-# Archivos de respaldo del sistema
-*_backup_*
-*.orig
-
-# Archivos de configuración específicos de la organización
-organization_config/
-department_settings/
-
-# Mantener directorios pero ignorar contenido
-data/.gitkeep
-logs/.gitkeep
-backups/.gitkeep
-temp/.gitkeep
+.codeclimate.yml
