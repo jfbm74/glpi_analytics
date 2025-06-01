@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de IA - Sistema de Monitoreo - Clínica Bonsana</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    
+    <style>
+        /* Estilos específicos para el dashboard de IA */
+        .ai-dashboard {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+        }
+        
+        .status-card {
+            border-left: 4px solid var(--bonsana-red);
+            transition: all 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-healthy { background-color: #28a745; }
+        .status-warning { background-color: #ffc107; }
+        .status-critical { background-color: #dc3545; }
+        .status-unknown { background-color: #6c757d; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--bonsana-red);
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--bonsana-red);
+            line-height: 1;
+        }
+        
+        .metric-label {
+            color: var(--bonsana-gray);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .metric-trend {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            margin-top: 0.5rem;
+        }
+        
+        .trend-up {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .trend-down {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .trend-stable {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .activity-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        
+        .activity-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+        
+        .activity-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        
+        .activity-timestamp {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .system-health {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .health-metric {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+        
+        .health-metric.healthy { border-color: #28a745; }
+        .health-metric.warning { border-color: #ffc107; }
+        .health-metric.critical { border-color: #dc3545; }
+        
+        .usage-chart {
+            height: 300px;
+            margin: 1rem 0;
+        }
+        
+        .error-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .auto-refresh {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            border-radius: 25px;
+            padding: 0.5rem 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+        
+        .refresh-indicator {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e9ecef;
+            border-top: 2px solid var(--bonsana-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .cost-display {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .performance-gauge {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .gauge-fill {
+            stroke-dasharray: 0 100;
+            transition: stroke-dasharray 0.5s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .system-health {
+                grid-template-columns: 1fr;
+            }
+            
+            .metric-value {
+                font-size: 2rem;
+            }
+            
+            .auto-refresh {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="ai-dashboard">
+    <!-- Auto-refresh indicator -->
+    <div class="auto-refresh" id="autoRefreshIndicator">
+        <span class="refresh-indicator d-none" id="refreshSpinner"></span>
+        <small>Auto-actualización: <span id="refreshStatus">Activa</span></small>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-hospital me-2"></i>
+                Clínica Bonsana - Dashboard IT
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link text-white" href="{{ url_for('index') }}">
+                    <i class="bi bi-speedometer2 me-1"></i>Dashboard Principal
+                </a>
+                <a class="nav-link text-white" href="{{ url_for('ai.ai_analysis_page') }}">
+                    <i class="bi bi-brain me-1"></i>Análisis IA
+                </a>
+            </div>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text text-white">
+                    <i class="bi bi-robot me-1"></i>
+                    Monitoreo de IA
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- System Status Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card status-card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title mb-0">
+                                <i class="bi bi-activity me-2"></i>
+                                Estado del Sistema de IA
+                            </h3>
+                            <div>
+                                <span class="status-indicator status-healthy" id="systemStatusIndicator"></span>
+                                <span id="systemStatusText">Sistema Saludable</span>
+                                <button class="btn btn-outline-primary btn-sm ms-3" id="refreshBtn">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="metric-value" id="activeAnalyses">0</div>
+                                    <div class="metric-label">Análisis Activos</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="metric-value" id="todayAnalyses">0</div>
+                                    <div class="metric-label">Análisis Hoy</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="metric-value" id="successRate">0%</div>
+                                    <div class="metric-label">Tasa de Éxito</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="metric-value" id="avgProcessingTime">0s</div>
+                                    <div class="metric-label">Tiempo Promedio</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Row -->
+        <div class="row">
+            <!-- Left Column - Metrics -->
+            <div class="col-lg-8">
+                <!-- Performance Metrics -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="metric-value" id="totalTokensToday">0</div>
+                                    <div class="metric-label">Tokens Procesados Hoy</div>
+                                    <div class="metric-trend trend-up" id="tokensTrend">
+                                        <i class="bi bi-arrow-up"></i> +15% vs ayer
+                                    </div>
+                                </div>
+                                <i class="bi bi-cpu fs-1 text-muted"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="cost-display">
+                            <h6 class="mb-1">Costo Estimado Hoy</h6>
+                            <div class="h2 mb-0">$<span id="costToday">0.00</span></div>
+                            <small>Basado en uso de tokens</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usage Charts -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-graph-up me-2"></i>Uso de IA en las Últimas 24 Horas
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="usage-chart">
+                                    <canvas id="usageChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Types Distribution -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="bi bi-pie-chart me-2"></i>Tipos de Análisis
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="analysisTypesChart" style="height: 250px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="bi bi-speedometer2 me-2"></i>Rendimiento del Sistema
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="system-health">
+                                    <div class="health-metric healthy" id="cpuHealth">
+                                        <div class="h4 mb-1" id="cpuUsage">0%</div>
+                                        <small>CPU</small>
+                                    </div>
+                                    <div class="health-metric healthy" id="memoryHealth">
+                                        <div class="h4 mb-1" id="memoryUsage">0%</div>
+                                        <small>Memoria</small>
+                                    </div>
+                                    <div class="health-metric healthy" id="cacheHealth">
+                                        <div class="h4 mb-1" id="cacheSize">0 MB</div>
+                                        <small>Cache</small>
+                                    </div>
+                                    <div class="health-metric healthy" id="diskHealth">
+                                        <div class="h4 mb-1" id="diskUsage">0%</div>
+                                        <small>Disco</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Activity & Status -->
+            <div class="col-lg-4">
+                <!-- Active Analyses -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-play-circle me-2"></i>Análisis Activos
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="activeAnalysesList">
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-check-circle fs-1 text-success"></i>
+                                <p class="mb-0">No hay análisis activos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-clock-history me-2"></i>Actividad Reciente
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="activity-log" id="recentActivityLog">
+                            <!-- Activity items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Errors -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Errores Frecuentes
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="error-list" id="topErrorsList">
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-check-circle fs-1 text-success"></i>
+                                <p class="mb-0">No hay errores recientes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Usage -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-cpu me-2"></i>Uso por Modelo
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="modelUsageList">
+                            <!-- Model usage will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Trends -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Tendencias de Rendimiento (7 días)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="performanceTrendsChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Global variables
+        let refreshInterval;
+        let refreshActive = true;
+        let charts = {};
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            startAutoRefresh();
+            
+            // Event listeners
+            document.getElementById('refreshBtn').addEventListener('click', refreshDashboard);
+        });
+        
+        function initializeDashboard() {
+            console.log('Inicializando Dashboard de IA...');
+            refreshDashboard();
+            initializeCharts();
+        }
+        
+        async function refreshDashboard() {
+            try {
+                showRefreshIndicator(true);
+                
+                // Fetch all data in parallel
+                const [status, trends, health] = await Promise.all([
+                    fetch('/ai/api/ai/status').then(r => r.json()),
+                    fetch('/ai/api/ai/trends?days=7').then(r => r.json()),
+                    fetch('/ai/api/ai/health').then(r => r.json())
+                ]);
+                
+                updateSystemStatus(status);
+                updatePerformanceTrends(trends);
+                updateHealthMetrics(health);
+                updateCharts(status, trends);
+                
+            } catch (error) {
+                console.error('Error refreshing dashboard:', error);
+                showError('Error actualizando dashboard');
+            } finally {
+                showRefreshIndicator(false);
+            }
+        }
+        
+        function updateSystemStatus(data) {
+            if (!data.success) return;
+            
+            const status = data.status || {};
+            
+            // Update main status
+            const statusEl = document.getElementById('systemStatusIndicator');
+            const statusTextEl = document.getElementById('systemStatusText');
+            
+            const systemStatus = status.status || 'unknown';
+            statusEl.className = `status-indicator status-${systemStatus}`;
+            
+            const statusTexts = {
+                'healthy': 'Sistema Saludable',
+                'warning': 'Advertencias Detectadas',
+                'critical': 'Problemas Críticos',
+                'busy': 'Sistema Ocupado',
+                'unknown': 'Estado Desconocido'
+            };
+            
+            statusTextEl.textContent = statusTexts[systemStatus] || 'Estado Desconocido';
+            
+            // Update metrics
+            const activeAnalyses = status.active_analyses?.count || 0;
+            const todayStats = status.today_stats || {};
+            
+            document.getElementById('activeAnalyses').textContent = activeAnalyses;
+            document.getElementById('todayAnalyses').textContent = todayStats.total_analyses || 0;
+            document.getElementById('successRate').textContent = `${Math.round(todayStats.success_rate || 0)}%`;
+            document.getElementById('avgProcessingTime').textContent = `${(todayStats.avg_processing_time || 0).toFixed(1)}s`;
+            document.getElementById('totalTokensToday').textContent = formatNumber(todayStats.total_tokens || 0);
+            document.getElementById('costToday').textContent = (todayStats.total_cost || 0).toFixed(4);
+            
+            // Update active analyses list
+            updateActiveAnalysesList(status.active_analyses?.details || []);
+            
+            // Update model usage
+            updateModelUsage(status.model_usage || {});
+            
+            // Update top errors
+            updateTopErrors(status.top_errors || {});
+            
+            // Update system metrics
+            const systemMetrics = status.system_metrics || {};
+            updateSystemHealthMetrics(systemMetrics);
+        }
+        
+        function updateActiveAnalysesList(activeAnalyses) {
+            const container = document.getElementById('activeAnalysesList');
+            
+            if (activeAnalyses.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-check-circle fs-1 text-success"></i>
+                        <p class="mb-0">No hay análisis activos</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const html = activeAnalyses.map(analysis => `
+                <div class="activity-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>${getAnalysisTypeLabel(analysis.type)}</strong>
+                            <div class="activity-timestamp">
+                                ${formatDuration(analysis.duration_seconds)} ejecutándose
+                            </div>
+                        </div>
+                        <span class="badge bg-primary">${analysis.model}</span>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateModelUsage(modelUsage) {
+            const container = document.getElementById('modelUsageList');
+            
+            if (Object.keys(modelUsage).length === 0) {
+                container.innerHTML = '<p class="text-muted mb-0">No hay datos de uso</p>';
+                return;
+            }
+            
+            const total = Object.values(modelUsage).reduce((a, b) => a + b, 0);
+            
+            const html = Object.entries(modelUsage)
+                .sort(([,a], [,b]) => b - a)
+                .map(([model, count]) => {
+                    const percentage = ((count / total) * 100).toFixed(1);
+                    return `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-medium">${model}</span>
+                            <div>
+                                <span class="badge bg-secondary">${count}</span>
+                                <small class="text-muted ms-1">${percentage}%</small>
+                            </div>
+                        </div>
+                        <div class="progress mb-3" style="height: 4px;">
+                            <div class="progress-bar bg-primary" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                }).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateTopErrors(topErrors) {
+            const container = document.getElementById('topErrorsList');
+            
+            if (Object.keys(topErrors).length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-check-circle fs-1 text-success"></i>
+                        <p class="mb-0">No hay errores recientes</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const html = Object.entries(topErrors)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5)
+                .map(([error, count]) => `
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-truncate me-2" title="${error}">${error}</span>
+                        <span class="badge bg-danger">${count}</span>
+                    </div>
+                `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateSystemHealthMetrics(systemMetrics) {
+            if (!systemMetrics) return;
+            
+            // CPU
+            const cpuUsage = systemMetrics.cpu_percent || 0;
+            document.getElementById('cpuUsage').textContent = `${cpuUsage.toFixed(1)}%`;
+            updateHealthMetricClass('cpuHealth', cpuUsage, 70, 90);
+            
+            // Memory
+            const memoryUsage = systemMetrics.memory_percent || 0;
+            document.getElementById('memoryUsage').textContent = `${memoryUsage.toFixed(1)}%`;
+            updateHealthMetricClass('memoryHealth', memoryUsage, 70, 85);
+            
+            // Cache
+            const cacheSize = systemMetrics.cache_size_mb || 0;
+            document.getElementById('cacheSize').textContent = `${cacheSize.toFixed(1)} MB`;
+            updateHealthMetricClass('cacheHealth', cacheSize, 200, 500);
+            
+            // Disk
+            const diskUsage = systemMetrics.disk_usage_percent || 0;
+            document.getElementById('diskUsage').textContent = `${diskUsage.toFixed(1)}%`;
+            updateHealthMetricClass('diskHealth', diskUsage, 80, 95);
+        }
+        
+        function updateHealthMetricClass(elementId, value, warningThreshold, criticalThreshold) {
+            const element = document.getElementById(elementId);
+            element.className = 'health-metric';
+            
+            if (value >= criticalThreshold) {
+                element.classList.add('critical');
+            } else if (value >= warningThreshold) {
+                element.classList.add('warning');
+            } else {
+                element.classList.add('healthy');
+            }
+        }
+        
+        function initializeCharts() {
+            // Usage Chart
+            const usageCtx = document.getElementById('usageChart').getContext('2d');
+            charts.usage = new Chart(usageCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Análisis por Hora',
+                        data: [],
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Analysis Types Chart
+            const typesCtx = document.getElementById('analysisTypesChart').getContext('2d');
+            charts.analysisTypes = new Chart(typesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#dc3545',
+                            '#ffc107',
+                            '#28a745',
+                            '#17a2b8',
+                            '#6f42c1',
+                            '#fd7e14'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Performance Trends Chart
+            const trendsCtx = document.getElementById('performanceTrendsChart').getContext('2d');
+            charts.performanceTrends = new Chart(trendsCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Análisis Diarios',
+                        data: [],
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Tasa de Éxito (%)',
+                        data: [],
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateCharts(statusData, trendsData) {
+            // Update usage chart with mock hourly data
+            if (charts.usage) {
+                const hours = Array.from({length: 24}, (_, i) => 
+                    new Date(Date.now() - (23-i) * 60 * 60 * 1000).getHours() + ':00'
+                );
+                const usage = Array.from({length: 24}, () => Math.floor(Math.random() * 10));
+                
+                charts.usage.data.labels = hours;
+                charts.usage.data.datasets[0].data = usage;
+                charts.usage.update();
+            }
+            
+            // Update analysis types chart
+            if (charts.analysisTypes && statusData.success) {
+                const todayStats = statusData.today_stats || {};
+                // Mock data for analysis types
+                const types = ['Comprensivo', 'Rápido', 'SLA', 'Técnicos', 'Tendencias'];
+                const counts = [5, 8, 3, 2, 4];
+                
+                charts.analysisTypes.data.labels = types;
+                charts.analysisTypes.data.datasets[0].data = counts;
+                charts.analysisTypes.update();
+            }
+            
+            // Update performance trends chart
+            if (charts.performanceTrends && trendsData.success) {
+                const trendData = trendsData.daily_trends || {};
+                const dates = Object.keys(trendData).sort();
+                const analyses = dates.map(date => trendData[date].total_analyses);
+                const successRates = dates.map(date => trendData[date].success_rate);
+                
+                charts.performanceTrends.data.labels = dates.map(date => 
+                    new Date(date).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })
+                );
+                charts.performanceTrends.data.datasets[0].data = analyses;
+                charts.performanceTrends.data.datasets[1].data = successRates;
+                charts.performanceTrends.update();
+            }
+        }
+        
+        function startAutoRefresh() {
+            refreshInterval = setInterval(() => {
+                if (refreshActive) {
+                    refreshDashboard();
+                }
+            }, 30000); // Refresh every 30 seconds
+        }
+        
+        function showRefreshIndicator(show) {
+            const spinner = document.getElementById('refreshSpinner');
+            const status = document.getElementById('refreshStatus');
+            
+            if (show) {
+                spinner.classList.remove('d-none');
+                status.textContent = 'Actualizando...';
+            } else {
+                spinner.classList.add('d-none');
+                status.textContent = 'Activa';
+            }
+        }
+        
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+        
+        function formatDuration(seconds) {
+            if (seconds < 60) return `${Math.round(seconds)}s`;
+            if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+            return `${Math.round(seconds / 3600)}h`;
+        }
+        
+        function getAnalysisTypeLabel(type) {
+            const labels = {
+                'comprehensive': 'Análisis Comprensivo',
+                'quick': 'Análisis Rápido',
+                'technician': 'Por Técnico',
+                'sla': 'Análisis SLA',
+                'trends': 'Tendencias',
+                'cost': 'Optimización Costos'
+            };
+            return labels[type] || type;
+        }
+        
+        function showError(message) {
+            console.error(message);
+            // You could implement a toast notification here
+        }
+        
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            refreshActive = !document.hidden;
+            document.getElementById('refreshStatus').textContent = refreshActive ? 'Activa' : 'Pausada';
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

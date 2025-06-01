@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de IA - Dashboard IT - Clínica Bonsana</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Mantener variables de color Bonsana */
+        :root {
+            --bonsana-red: #dc3545;
+            --bonsana-red-light: #f8d7da;
+            --bonsana-red-dark: #b02a37;
+            --bonsana-white: #ffffff;
+            --bonsana-gray-light: #f8f9fa;
+            --bonsana-gray: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --dark-text: #212529;
+            --light-text: #6c757d;
+            --border-color: #dee2e6;
+            
+            /* Sombras más suaves y modernas */
+            --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            
+            /* Bordes más modernos */
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --border-radius-lg: 16px;
+            
+            /* Transiciones suaves */
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Global Styles - Tipografía mejorada */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bonsana-gray-light) 0%, #e9ecef 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-text);
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--bonsana-red-dark);
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        /* Navigation - Modernizada */
+        .navbar {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%) !important;
+            box-shadow: var(--shadow-md);
+            border-bottom: none;
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-shadow: none;
+            color: var(--bonsana-white) !important;
+        }
+
+        .navbar-text {
+            font-weight: 500;
+            color: var(--bonsana-white) !important;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            color: var(--bonsana-white) !important;
+        }
+
+        /* Cards - Diseño más limpio */
+        .card {
+            background: var(--bonsana-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: var(--bonsana-white);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            padding: 1.5rem;
+            border-top-left-radius: var(--border-radius);
+            border-top-right-radius: var(--border-radius);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .card-title {
+            color: var(--dark-text);
+            font-weight: 600;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title i {
+            color: var(--bonsana-red);
+            font-size: 1.1em;
+        }
+
+        /* Buttons - Mejorados */
+        .btn {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            transition: var(--transition);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            color: var(--bonsana-white);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--bonsana-red-dark) 0%, #8f1e2b 100%);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-primary {
+            border: 1px solid var(--bonsana-red);
+            color: var(--bonsana-red);
+            background: transparent;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--bonsana-red);
+            color: var(--bonsana-white);
+            border-color: var(--bonsana-red);
+        }
+
+        .btn-outline-secondary {
+            border: 1px solid var(--border-color);
+            color: var(--light-text);
+            background: transparent;
+        }
+
+        .btn-outline-secondary:hover {
+            background: var(--bonsana-gray-light);
+            color: var(--dark-text);
+            border-color: var(--bonsana-gray);
+        }
+
+        .btn-outline-info {
+            border: 1px solid var(--info-color);
+            color: var(--info-color);
+        }
+
+        .btn-outline-info:hover {
+            background: var(--info-color);
+            color: var(--bonsana-white);
+        }
+
+        .btn-outline-warning {
+            border: 1px solid var(--warning-color);
+            color: #b45309;
+        }
+
+        .btn-outline-warning:hover {
+            background: var(--warning-color);
+            color: var(--bonsana-white);
+        }
+
+        .btn-outline-success {
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+
+        .btn-outline-success:hover {
+            background: var(--success-color);
+            color: var(--bonsana-white);
+        }
+
+        /* Form Controls */
+        .form-select,
+        .form-control {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+            padding: 0.75rem 1rem;
+            transition: var(--transition);
+            background: var(--bonsana-white);
+            font-size: 0.95rem;
+        }
+
+        .form-select:focus,
+        .form-control:focus {
+            border-color: var(--bonsana-red);
+            box-shadow: 0 0 0 3px rgb(220 53 69 / 0.1);
+            outline: none;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--dark-text);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Model Info - Estilo Bonsana */
+        .model-info {
+            background: linear-gradient(135deg, var(--bonsana-red-light) 0%, rgba(248, 215, 218, 0.7) 100%);
+            border: 1px solid var(--bonsana-red);
+            border-radius: var(--border-radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .model-info .fw-bold {
+            color: var(--bonsana-red-dark);
+        }
+
+        /* Badges */
+        .badge {
+            font-weight: 500;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius-sm);
+            font-size: 0.8rem;
+        }
+
+        .bg-success {
+            background: var(--success-color) !important;
+        }
+
+        .bg-danger {
+            background: var(--bonsana-red) !important;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--border-radius);
+            z-index: 1000;
+        }
+
+        .loading-content {
+            text-align: center;
+            max-width: 300px;
+        }
+
+        .ai-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--bonsana-red-light);
+            border-top: 3px solid var(--bonsana-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Progress Bar */
+        .progress {
+            background: var(--bonsana-gray-light);
+            border-radius: var(--border-radius-sm);
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            transition: width 0.3s ease;
+        }
+
+        /* Analysis Container */
+        .analysis-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: var(--border-radius-sm);
+            background: var(--bonsana-white);
+            padding: 1.5rem;
+        }
+
+        .analysis-content {
+            line-height: 1.7;
+            font-size: 0.95rem;
+            color: var(--dark-text);
+        }
+
+        .analysis-content h1,
+        .analysis-content h2,
+        .analysis-content h3,
+        .analysis-content h4,
+        .analysis-content h5,
+        .analysis-content h6 {
+            color: var(--bonsana-red-dark);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .analysis-content h1 {
+            border-bottom: 2px solid var(--bonsana-red);
+            padding-bottom: 0.5rem;
+        }
+
+        .analysis-content h2 {
+            border-bottom: 1px solid var(--bonsana-red-light);
+            padding-bottom: 0.5rem;
+        }
+
+        .analysis-content ul,
+        .analysis-content ol {
+            padding-left: 1.5rem;
+        }
+
+        .analysis-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .analysis-content blockquote {
+            border-left: 4px solid var(--bonsana-red);
+            background: var(--bonsana-red-light);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+            font-style: italic;
+        }
+
+        .analysis-content table {
+            margin: 1.5rem 0;
+            border-radius: var(--border-radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .analysis-content th {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            color: var(--bonsana-white);
+            border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+            padding: 12px 15px;
+        }
+
+        .analysis-content td {
+            border-color: var(--border-color);
+            vertical-align: middle;
+            padding: 10px 15px;
+        }
+
+        .analysis-content code {
+            background: var(--bonsana-gray-light);
+            color: var(--bonsana-red-dark);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        }
+
+        .analysis-content pre {
+            background: var(--bonsana-gray-light);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+            padding: 1rem;
+            overflow-x: auto;
+        }
+
+        /* Analysis Actions */
+        .analysis-actions {
+            position: sticky;
+            top: 0;
+            background: var(--bonsana-white);
+            z-index: 100;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+
+        .analysis-type-badge {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            color: var(--bonsana-white);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius-sm);
+            font-size: 0.9rem;
+        }
+
+        /* Stats - Mejoradas */
+        .analysis-stats {
+            background: linear-gradient(135deg, var(--bonsana-gray-light) 0%, #e9ecef 100%);
+            border-radius: var(--border-radius-sm);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stats-item {
+            text-align: center;
+        }
+
+        .stats-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--bonsana-red);
+            display: block;
+        }
+
+        .stats-label {
+            font-size: 0.85rem;
+            color: var(--light-text);
+            font-weight: 500;
+        }
+
+        /* History */
+        .analysis-history-item {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: var(--transition);
+            cursor: pointer;
+            background: var(--bonsana-white);
+        }
+
+        .analysis-history-item:hover {
+            border-color: var(--bonsana-red);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        /* Export Options */
+        .export-options {
+            background: var(--bonsana-gray-light);
+            border-radius: var(--border-radius-sm);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Welcome State */
+        .welcome-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--light-text);
+        }
+
+        .welcome-state i {
+            font-size: 4rem;
+            color: var(--bonsana-red);
+            opacity: 0.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .welcome-state h4 {
+            color: var(--dark-text);
+            margin-bottom: 1rem;
+        }
+
+        .welcome-state .lead {
+            color: var(--light-text);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Alerts */
+        .alert-danger {
+            background: var(--bonsana-red-light);
+            border: 1px solid var(--bonsana-red);
+            color: var(--bonsana-red-dark);
+            border-radius: var(--border-radius-sm);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .card-header {
+                padding: 1rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.1rem;
+            }
+
+            .analysis-actions {
+                padding: 0.75rem 0;
+            }
+
+            .analysis-actions .d-flex {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: stretch !important;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Toast Container */
+        .toast-container {
+            z-index: 9999;
+        }
+
+        .toast {
+            border-radius: var(--border-radius-sm);
+            border: none;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Quick Analysis Buttons */
+        .quick-analysis {
+            transition: var(--transition);
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+        }
+
+        .quick-analysis:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Estado vacío mejorado */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--light-text);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--bonsana-red);
+            opacity: 0.3;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-hospital me-2"></i>
+                Clínica Bonsana - Dashboard IT
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link text-white" href="{{ url_for('index') }}">
+                    <i class="bi bi-arrow-left me-1"></i>Volver al Dashboard
+                </a>
+            </div>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text text-white">
+                    <i class="bi bi-robot me-1"></i>
+                    Análisis de IA
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Header Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="card-title mb-0">
+                                <i class="bi bi-brain me-2"></i>
+                                Análisis Estratégico con IA
+                            </h3>
+                            <div class="d-flex gap-2">
+                                <button id="testConnectionBtn" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-wifi me-1"></i>Probar Conexión
+                                </button>
+                                <button id="refreshBtn" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Model Info -->
+                        <div class="model-info" id="modelInfo">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-cpu me-2 text-danger"></i>
+                                <span class="fw-bold">Modelo:</span>
+                                <span class="ms-2" id="modelName">Cargando...</span>
+                                <span class="badge bg-success ms-auto" id="connectionStatus">
+                                    <i class="bi bi-circle-fill me-1"></i>Conectado
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Analysis Type Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="analysisType" class="form-label fw-bold">
+                                    <i class="bi bi-gear me-1"></i>Tipo de Análisis
+                                </label>
+                                <select class="form-select" id="analysisType">
+                                    <option value="comprehensive">Análisis Exhaustivo Completo</option>
+                                    <option value="quick">Análisis Rápido de KPIs</option>
+                                    <option value="technician">Rendimiento por Técnico</option>
+                                    <option value="sla">Análisis de SLA</option>
+                                    <option value="trends">Análisis de Tendencias</option>
+                                    <option value="cost">Optimización de Costos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button id="startAnalysisBtn" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-play-circle me-2"></i>
+                                    Iniciar Análisis
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-primary w-100 btn-sm quick-analysis" data-type="comprehensive">
+                                    <i class="bi bi-clipboard-data me-1"></i>Análisis Completo
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-warning w-100 btn-sm quick-analysis" data-type="quick">
+                                    <i class="bi bi-lightning me-1"></i>Análisis Rápido
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-info w-100 btn-sm quick-analysis" data-type="sla">
+                                    <i class="bi bi-shield-check me-1"></i>Análisis SLA
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-success w-100 btn-sm quick-analysis" data-type="trends">
+                                    <i class="bi bi-graph-up me-1"></i>Tendencias
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Row -->
+        <div class="row">
+            <!-- Analysis Results -->
+            <div class="col-lg-8">
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-text me-2"></i>
+                            Resultado del Análisis
+                        </h5>
+                    </div>
+                    <div class="card-body position-relative">
+                        <!-- Loading Overlay -->
+                        <div class="loading-overlay d-none" id="loadingOverlay">
+                            <div class="loading-content">
+                                <div class="ai-spinner"></div>
+                                <h5 class="text-muted">Analizando datos con IA...</h5>
+                                <p class="text-muted mb-0">
+                                    <span id="loadingMessage">Procesando información del dashboard</span>
+                                </p>
+                                <div class="progress mt-3" style="width: 300px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" id="progressBar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Analysis Content -->
+                        <div id="analysisResults">
+                            <div class="welcome-state">
+                                <i class="bi bi-robot"></i>
+                                <h4>Bienvenido al Análisis de IA</h4>
+                                <p class="lead">Selecciona un tipo de análisis y presiona "Iniciar Análisis" para comenzar.</p>
+                                <p>El sistema utilizará inteligencia artificial para analizar tus datos de tickets y proporcionar insights estratégicos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Export Options (Hidden by default) -->
+                <div class="export-options d-none" id="exportOptions">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-download me-2"></i>Opciones de Exportación
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-success w-100 btn-sm" id="exportPdfBtn">
+                                <i class="bi bi-file-pdf me-1"></i>Exportar PDF
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-primary w-100 btn-sm" id="exportWordBtn">
+                                <i class="bi bi-file-word me-1"></i>Exportar Word
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-secondary w-100 btn-sm" id="saveAnalysisBtn">
+                                <i class="bi bi-save me-1"></i>Guardar Análisis
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Analysis Stats -->
+                <div class="card mb-3 fade-in">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-bar-chart me-2"></i>Estadísticas del Análisis
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysisStats">
+                            <div class="empty-state">
+                                <i class="bi bi-graph-up"></i>
+                                <p>No hay análisis activo</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Analysis History -->
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-clock-history me-2"></i>Historial de Análisis
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysisHistory">
+                            <div class="empty-state">
+                                <i class="bi bi-archive"></i>
+                                <p>No hay análisis previos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/5.1.1/marked.min.js"></script>
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    
+    <script>
+        // Global variables
+        let currentAnalysis = null;
+        let analysisHistory = [];
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+            loadModelInfo();
+            loadAnalysisHistory();
+        });
+        
+        function initializePage() {
+            // Event listeners
+            document.getElementById('startAnalysisBtn').addEventListener('click', startAnalysis);
+            document.getElementById('testConnectionBtn').addEventListener('click', testConnection);
+            document.getElementById('refreshBtn').addEventListener('click', refreshData);
+            document.getElementById('saveAnalysisBtn').addEventListener('click', saveCurrentAnalysis);
+            
+            // Quick analysis buttons
+            document.querySelectorAll('.quick-analysis').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const analysisType = this.dataset.type;
+                    document.getElementById('analysisType').value = analysisType;
+                    startAnalysis();
+                });
+            });
+        }
+        
+        async function loadModelInfo() {
+            try {
+                const response = await fetch('/api/ai/model-info');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('modelName').textContent = data.model_info.model_name;
+                    updateConnectionStatus(true);
+                } else {
+                    document.getElementById('modelName').textContent = 'Error al cargar modelo';
+                    updateConnectionStatus(false);
+                }
+            } catch (error) {
+                console.error('Error loading model info:', error);
+                updateConnectionStatus(false);
+            }
+        }
+        
+        async function testConnection() {
+            const btn = document.getElementById('testConnectionBtn');
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Probando...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/ai/test-connection');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateConnectionStatus(true);
+                    showToast('Conexión exitosa con la API de IA', 'success');
+                } else {
+                    updateConnectionStatus(false);
+                    showToast('Error de conexión: ' + data.error, 'error');
+                }
+            } catch (error) {
+                updateConnectionStatus(false);
+                showToast('Error de conexión: ' + error.message, 'error');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
+        }
+        
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.className = 'badge bg-success ms-auto';
+                status.innerHTML = '<i class="bi bi-circle-fill me-1"></i>Conectado';
+            } else {
+                status.className = 'badge bg-danger ms-auto';
+                status.innerHTML = '<i class="bi bi-circle-fill me-1"></i>Desconectado';
+            }
+        }
+        
+        async function startAnalysis() {
+            const analysisType = document.getElementById('analysisType').value;
+            const btn = document.getElementById('startAnalysisBtn');
+            const originalContent = btn.innerHTML;
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analizando...';
+            
+            showLoadingOverlay(true);
+            updateLoadingProgress(0, 'Inicializando análisis...');
+            
+            try {
+                // Simulate progress
+                const progressSteps = [
+                    { progress: 20, message: 'Preparando datos del CSV...' },
+                    { progress: 40, message: 'Obteniendo contexto del dashboard...' },
+                    { progress: 60, message: 'Enviando datos a la IA...' },
+                    { progress: 80, message: 'Procesando análisis...' },
+                    { progress: 95, message: 'Finalizando...' }
+                ];
+                
+                for (const step of progressSteps) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    updateLoadingProgress(step.progress, step.message);
+                }
+                
+                // Make actual request
+                const response = await fetch('/api/ai/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        analysis_type: analysisType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                updateLoadingProgress(100, 'Análisis completado');
+                
+                if (data.success) {
+                    displayAnalysisResult(data);
+                    updateAnalysisStats(data);
+                    addToHistory(data);
+                    showExportOptions(true);
+                    showToast('Análisis completado exitosamente', 'success');
+                } else {
+                    showAnalysisError(data.error);
+                    showToast('Error en el análisis: ' + data.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error in analysis:', error);
+                showAnalysisError(error.message);
+                showToast('Error de conexión: ' + error.message, 'error');
+            } finally {
+                // Reset button
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                
+                // Hide loading after a brief delay
+                setTimeout(() => showLoadingOverlay(false), 500);
+            }
+        }
+        
+        function showLoadingOverlay(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.remove('d-none');
+            } else {
+                overlay.classList.add('d-none');
+            }
+        }
+        
+        function updateLoadingProgress(percentage, message) {
+            const progressBar = document.getElementById('progressBar');
+            const messageElement = document.getElementById('loadingMessage');
+            
+            progressBar.style.width = percentage + '%';
+            messageElement.textContent = message;
+        }
+        
+        function displayAnalysisResult(data) {
+            const container = document.getElementById('analysisResults');
+            currentAnalysis = data;
+            
+            // Convert markdown to HTML
+            const analysisHtml = marked.parse(data.analysis);
+            
+            const html = `
+                <div class="analysis-actions">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="analysis-type-badge">${getAnalysisTypeLabel(data.analysis_type)}</span>
+                            <small class="text-muted ms-2">
+                                <i class="bi bi-clock me-1"></i>
+                                ${new Date().toLocaleString('es-ES')}
+                            </small>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm" onclick="copyAnalysisToClipboard()">
+                                <i class="bi bi-clipboard me-1"></i>Copiar
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="printAnalysis()">
+                                <i class="bi bi-printer me-1"></i>Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-container">
+                    <div class="analysis-content">
+                        ${analysisHtml}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            
+            // Highlight code blocks
+            container.querySelectorAll('pre code').forEach((block) => {
+                Prism.highlightElement(block);
+            });
+        }
+        
+        function showAnalysisError(error) {
+            const container = document.getElementById('analysisResults');
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error en el Análisis
+                    </h5>
+                    <p class="mb-0">${error}</p>
+                    <hr>
+                    <p class="mb-0">
+                        <small>Verifica la conexión a internet y que la API key sea válida.</small>
+                    </p>
+                </div>
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary" onclick="startAnalysis()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>
+                        Reintentar Análisis
+                    </button>
+                </div>
+            `;
+        }
+        
+        function updateAnalysisStats(data) {
+            const container = document.getElementById('analysisStats');
+            
+            const html = `
+                <div class="analysis-stats">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h6 text-danger mb-0">${data.processing_time?.toFixed(2) || 'N/A'}s</div>
+                                <small class="text-muted">Tiempo de Procesamiento</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h6 text-success mb-0">${data.response_tokens || 'N/A'}</div>
+                                <small class="text-muted">Tokens de Respuesta</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h6 text-info mb-0">${data.model_used || 'N/A'}</div>
+                                <small class="text-muted">Modelo Utilizado</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h6 text-warning mb-0">${getAnalysisTypeLabel(data.analysis_type)}</div>
+                                <small class="text-muted">Tipo de Análisis</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function addToHistory(data) {
+            analysisHistory.unshift({
+                id: Date.now(),
+                type: data.analysis_type,
+                timestamp: new Date().toISOString(),
+                processing_time: data.processing_time,
+                success: data.success,
+                data: data
+            });
+            
+            // Keep only last 10 analyses
+            if (analysisHistory.length > 10) {
+                analysisHistory = analysisHistory.slice(0, 10);
+            }
+            
+            updateHistoryDisplay();
+        }
+        
+        function updateHistoryDisplay() {
+            const container = document.getElementById('analysisHistory');
+            
+            if (analysisHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-archive"></i>
+                        <p>No hay análisis previos</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const html = analysisHistory.map(item => `
+                <div class="analysis-history-item" onclick="loadPreviousAnalysis(${item.id})">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${getAnalysisTypeLabel(item.type)}</h6>
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                ${new Date(item.timestamp).toLocaleString('es-ES')}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge ${item.success ? 'bg-success' : 'bg-danger'}">
+                                ${item.success ? 'Exitoso' : 'Error'}
+                            </span>
+                            <br>
+                            <small class="text-muted">${item.processing_time?.toFixed(1) || 'N/A'}s</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function loadPreviousAnalysis(id) {
+            const item = analysisHistory.find(h => h.id === id);
+            if (item && item.data) {
+                displayAnalysisResult(item.data);
+                updateAnalysisStats(item.data);
+                showExportOptions(true);
+                showToast('Análisis anterior cargado', 'info');
+            }
+        }
+        
+        async function loadAnalysisHistory() {
+            try {
+                const response = await fetch('/api/ai/history');
+                const data = await response.json();
+                
+                if (data.success && data.history) {
+                    analysisHistory = data.history.map(item => ({
+                        id: Date.now() + Math.random(),
+                        type: item.analysis_type,
+                        timestamp: item.timestamp,
+                        processing_time: item.processing_time,
+                        success: item.success,
+                        data: item
+                    }));
+                    updateHistoryDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading analysis history:', error);
+            }
+        }
+        
+        function showExportOptions(show) {
+            const options = document.getElementById('exportOptions');
+            if (show) {
+                options.classList.remove('d-none');
+            } else {
+                options.classList.add('d-none');
+            }
+        }
+        
+        async function saveCurrentAnalysis() {
+            if (!currentAnalysis) {
+                showToast('No hay análisis para guardar', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/ai/save-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentAnalysis)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Análisis guardado exitosamente', 'success');
+                } else {
+                    showToast('Error al guardar: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showToast('Error al guardar: ' + error.message, 'error');
+            }
+        }
+        
+        function copyAnalysisToClipboard() {
+            if (!currentAnalysis) return;
+            
+            const textContent = document.querySelector('.analysis-content').innerText;
+            navigator.clipboard.writeText(textContent).then(() => {
+                showToast('Análisis copiado al portapapeles', 'success');
+            }).catch(() => {
+                showToast('Error al copiar al portapapeles', 'error');
+            });
+        }
+        
+        function printAnalysis() {
+            if (!currentAnalysis) return;
+            
+            const printWindow = window.open('', '_blank');
+            const content = document.querySelector('.analysis-content').innerHTML;
+            
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Análisis de IA - Clínica Bonsana</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1, h2, h3, h4, h5, h6 { color: #dc3545; }
+                        table { border-collapse: collapse; width: 100%; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Análisis de IA - Clínica Bonsana</h1>
+                    <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
+                    <p><strong>Tipo:</strong> ${getAnalysisTypeLabel(currentAnalysis.analysis_type)}</p>
+                    <hr>
+                    ${content}
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.print();
+        }
+        
+        function refreshData() {
+            location.reload();
+        }
+        
+        function getAnalysisTypeLabel(type) {
+            const labels = {
+                'comprehensive': 'Análisis Exhaustivo Completo',
+                'quick': 'Análisis Rápido de KPIs',
+                'technician': 'Rendimiento por Técnico',
+                'sla': 'Análisis de SLA',
+                'trends': 'Análisis de Tendencias',
+                'cost': 'Optimización de Costos'
+            };
+            return labels[type] || type;
+        }
+        
+        function showToast(message, type) {
+            const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+            
+            const toastHtml = `
+                <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            
+            const toastElement = toastContainer.lastElementChild;
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+            
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        }
+        
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+            return container;
+        }
+    </script>
+</body>
+</html>

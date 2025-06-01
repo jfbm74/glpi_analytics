@@ -13,6 +13,50 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     
     <style>
+        /* Estilos para tickets sin asignar */
+        .unassigned-alert {
+            border-left: 4px solid #ff6b35 !important;
+            background: linear-gradient(90deg, #fff3e0 0%, #ffffff 100%) !important;
+            border-color: #ff6b35 !important;
+            animation: pulseWarning 3s ease-in-out infinite;
+        }
+
+        .unassigned-alert .bi-exclamation-triangle-fill {
+            color: #ff6b35;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes pulseWarning {
+            0%, 100% { 
+                border-left-color: #ff6b35;
+                background: linear-gradient(90deg, #fff3e0 0%, #ffffff 100%);
+            }
+            50% { 
+                border-left-color: #e55a2b;
+                background: linear-gradient(90deg, #ffe0cc 0%, #ffffff 100%);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 60%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-5px);
+            }
+            80% {
+                transform: translateY(-2px);
+            }
+        }
+
+        .metric-card.warning-highlight {
+            border-left: 4px solid #ff6b35;
+            background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
+        }
+
+        .metric-card.warning-highlight .metric-value {
+            color: #ff6b35;
+        }
         :root {
             --bonsana-red: #dc3545;
             --bonsana-red-light: #f8d7da;
@@ -238,6 +282,12 @@
                     <i class="bi bi-exclamation-triangle me-1"></i>Validación de Datos
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="validation-tab" href="{{ url_for('ai_analysis') }}">
+                    <i class="bi bi-robot me-1"></i> Análisis con IA Asistida
+                </a>
+            </li>
+
         </ul>
 
         <!-- Tab Content -->
@@ -843,86 +893,138 @@
         }
 
         function createTechnicianChart() {
-            const ctx = document.getElementById('technicianChart').getContext('2d');
-            const data = dashboardData.technicians || {};
-            
-            // Separar técnicos asignados de tickets sin asignar
-            const assignedTechnicians = {};
-            let unassignedCount = 0;
-            
-            Object.entries(data).forEach(([name, count]) => {
-                if (name === 'SIN ASIGNAR') {
-                    unassignedCount = count;
-                } else {
-                    assignedTechnicians[name] = count;
-                }
-            });
-            
-            // Ordenar técnicos por cantidad (excluyendo sin asignar)
-            const sortedTechnicians = Object.entries(assignedTechnicians)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 5);
-            
-            // Agregar tickets sin asignar al final si existen
-            if (unassignedCount > 0) {
-                sortedTechnicians.push(['SIN ASIGNAR', unassignedCount]);
-            }
-            
-            // Preparar colores - especial para tickets sin asignar
-            const backgroundColors = sortedTechnicians.map(([name]) => 
-                name === 'SIN ASIGNAR' ? colors.orange : colors.primary
-            );
-            
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: sortedTechnicians.map(([name]) => {
-                        if (name === 'SIN ASIGNAR') {
-                            return '⚠️ SIN ASIGNAR';
-                        }
-                        return name.length > 15 ? name.substring(0, 15) + '...' : name;
-                    }),
-                    datasets: [{
-                        data: sortedTechnicians.map(([,count]) => count),
-                        backgroundColor: backgroundColors,
-                        borderWidth: 1,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const name = sortedTechnicians[context.dataIndex][0];
-                                    const count = context.parsed.x;
-                                    if (name === 'SIN ASIGNAR') {
-                                        return `Tickets sin asignar: ${count}`;
-                                    }
-                                    return `${name}: ${count} tickets`;
-                                }
-                            }
-                        },
-                        showValues: {
-                            display: true,
-                            color: '#333',
-                            font: 'bold 12px Arial'
-                        }
+    const ctx = document.getElementById('technicianChart').getContext('2d');
+    const data = dashboardData.technicians || {};
+    
+    console.log('🔍 Datos de técnicos recibidos:', data);
+    
+    // Separar técnicos asignados de tickets sin asignar
+    const assignedTechnicians = {};
+    let unassignedCount = 0;
+    
+    Object.entries(data).forEach(([name, count]) => {
+        const normalizedName = (name || '').toString().trim().toLowerCase();
+        
+        if (normalizedName === 'sin asignar' || 
+            normalizedName === '' || 
+            normalizedName === 'null' || 
+            normalizedName === 'n/a' ||
+            normalizedName === 'none' ||
+            name === null || 
+            name === undefined) {
+            unassignedCount += count;
+        } else {
+            assignedTechnicians[name] = count;
+        }
+    });
+    
+    // Ordenar técnicos y agregar sin asignar
+    const sortedTechnicians = Object.entries(assignedTechnicians)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 7);
+    
+    if (unassignedCount > 0) {
+        sortedTechnicians.push(['SIN ASIGNAR', unassignedCount]);
+    }
+    
+    // Crear gráfico con colores especiales para sin asignar
+    const backgroundColors = sortedTechnicians.map(([name]) => 
+        name === 'SIN ASIGNAR' ? '#ff6b35' : colors.primary
+    );
+    
+    const labels = sortedTechnicians.map(([name]) => 
+        name === 'SIN ASIGNAR' ? '⚠️ SIN ASIGNAR' : 
+        (name.length > 18 ? name.substring(0, 18) + '...' : name)
+    );
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: sortedTechnicians.map(([,count]) => count),
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(color => 
+                    color === '#ff6b35' ? '#e55a2b' : '#b02a37'
+                ),
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: function(tooltipItem) {
+                        const name = sortedTechnicians[tooltipItem.tooltip.dataPoints[0].dataIndex][0];
+                        return name === 'SIN ASIGNAR' ? 'rgba(255, 107, 53, 0.95)' : 'rgba(0, 0, 0, 0.8)';
                     },
-                    scales: {
-                        x: {
-                            beginAtZero: true
+                    callbacks: {
+                        title: function(context) {
+                            const name = sortedTechnicians[context[0].dataIndex][0];
+                            return name === 'SIN ASIGNAR' ? '⚠️ TICKETS SIN ASIGNAR' : name;
+                        },
+                        afterLabel: function(context) {
+                            const name = sortedTechnicians[context.dataIndex][0];
+                            return name === 'SIN ASIGNAR' ? ['', '⚠️ Requiere atención inmediata'] : '';
+                        }
+                    }
+                },
+                showValues: {
+                    display: true,
+                    color: '#ffffff',
+                    font: 'bold 12px Arial'
+                }
+            },
+            scales: {
+                x: { beginAtZero: true },
+                y: {
+                    grid: { display: false },
+                    ticks: {
+                        color: function(context) {
+                            const name = sortedTechnicians[context.index][0];
+                            return name === 'SIN ASIGNAR' ? '#ff6b35' : '#333333';
+                        },
+                        font: function(context) {
+                            const name = sortedTechnicians[context.index][0];
+                            return name === 'SIN ASIGNAR' ? 
+                                { weight: 'bold', size: 12 } : 
+                                { weight: 'normal', size: 11 };
                         }
                     }
                 }
-            });
+            }
         }
+    });
+    
+    // Agregar alerta visual si hay tickets sin asignar
+    if (unassignedCount > 0) {
+        addUnassignedTicketsAlert(ctx.canvas.parentNode, unassignedCount);
+    }
+}
+
+// Función para agregar alerta
+function addUnassignedTicketsAlert(container, count) {
+    const existingAlert = container.querySelector('.unassigned-alert');
+    if (existingAlert) existingAlert.remove();
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert unassigned-alert mt-3 mb-0';
+    alertDiv.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+            <div>
+                <strong>⚠️ Atención requerida:</strong> 
+                <span class="fw-bold">${count} ticket${count > 1 ? 's' : ''}</span> 
+                sin asignar que necesita${count > 1 ? 'n' : ''} atención inmediata.
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(alertDiv);
+}
 
         function createCSATChart() {
             const ctx = document.getElementById('csatChart').getContext('2d');
@@ -1129,170 +1231,208 @@
             updateTechnicianResolution();
         }
 
-        function updateTechnicianSLA() {
-            const container = document.getElementById('technicianSLAStats');
-            const data = dashboardData.technicianSLA || {};
-            
-            if (Object.keys(data).length === 0) {
-                container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de SLA por técnico disponibles</div>';
-                return;
-            }
+       function updateTechnicianSLA() {
+    const container = document.getElementById('technicianSLAStats');
+    const data = dashboardData.technicianSLA || {};
+    
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de SLA por técnico disponibles</div>';
+        return;
+    }
 
-            let html = '<div class="table-responsive"><table class="table table-striped">';
-            html += `
-                <thead>
-                    <tr>
-                        <th>Técnico</th>
-                        <th>Total Incidencias</th>
-                        <th>Cumplimiento SLA</th>
-                        <th>SLA Excedido</th>
-                        <th>% Cumplimiento</th>
-                        <th>Performance</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
+    let html = '<div class="table-responsive"><table class="table table-striped">';
+    html += `
+        <thead>
+            <tr>
+                <th>Técnico</th>
+                <th>Total Incidencias</th>
+                <th>Cumplimiento SLA</th>
+                <th>SLA Excedido</th>
+                <th>% Cumplimiento</th>
+                <th>Performance</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
-            Object.entries(data).forEach(([technician, stats]) => {
-                const performanceClass = stats.compliance_rate >= 90 ? 'success' : 
-                                       stats.compliance_rate >= 70 ? 'warning' : 'danger';
-                const performanceIcon = stats.compliance_rate >= 90 ? 'bi-check-circle' : 
-                                      stats.compliance_rate >= 70 ? 'bi-exclamation-triangle' : 'bi-x-circle';
-                
-                html += `
-                    <tr>
-                        <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
-                        <td><span class="badge bg-primary">${stats.total_incidents}</span></td>
-                        <td><span class="badge bg-success">${stats.sla_compliant}</span></td>
-                        <td><span class="badge bg-danger">${stats.sla_exceeded}</span></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="progress me-2" style="width: 60px; height: 6px;">
-                                    <div class="progress-bar bg-${performanceClass}" style="width: ${stats.compliance_rate}%"></div>
-                                </div>
-                                <span class="text-${performanceClass} fw-bold">${stats.compliance_rate}%</span>
-                            </div>
-                        </td>
-                        <td>
-                            <i class="bi ${performanceIcon} text-${performanceClass}"></i>
-                        </td>
-                    </tr>
-                `;
-            });
+    Object.entries(data).forEach(([technician, stats]) => {
+        // Manejar valores undefined o faltantes
+        const totalIncidents = stats.total_incidents || 0;
+        const slaCompliant = stats.sla_compliant || 0;
+        const slaExceeded = stats.sla_exceeded || 0;
+        const complianceRate = stats.compliance_rate || 0;
+        
+        const performanceClass = complianceRate >= 90 ? 'success' : 
+                               complianceRate >= 70 ? 'warning' : 'danger';
+        const performanceIcon = complianceRate >= 90 ? 'bi-check-circle' : 
+                              complianceRate >= 70 ? 'bi-exclamation-triangle' : 'bi-x-circle';
+        
+        html += `
+            <tr>
+                <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
+                <td><span class="badge bg-primary">${totalIncidents}</span></td>
+                <td><span class="badge bg-success">${slaCompliant}</span></td>
+                <td><span class="badge bg-danger">${slaExceeded}</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress me-2" style="width: 60px; height: 6px;">
+                            <div class="progress-bar bg-${performanceClass}" style="width: ${complianceRate}%"></div>
+                        </div>
+                        <span class="text-${performanceClass} fw-bold">${complianceRate.toFixed(1)}%</span>
+                    </div>
+                </td>
+                <td>
+                    <i class="bi ${performanceIcon} text-${performanceClass}"></i>
+                </td>
+            </tr>
+        `;
+    });
 
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// Función helper para validar y limpiar datos
+function safeGetValue(obj, key, defaultValue = 0) {
+    const value = obj && obj[key];
+    return (value !== undefined && value !== null && !isNaN(value)) ? value : defaultValue;
+}
+
+// Función helper para formatear números
+function safeFormatNumber(value, decimals = 1) {
+    const num = parseFloat(value);
+    return isNaN(num) ? '0' : num.toFixed(decimals);
+}
 
         function updateTechnicianCSAT() {
-            const container = document.getElementById('technicianCSATStats');
-            const data = dashboardData.technicianCSAT || {};
-            
-            if (Object.keys(data).length === 0) {
-                container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de satisfacción por técnico disponibles</div>';
-                return;
-            }
+    const container = document.getElementById('technicianCSATStats');
+    const data = dashboardData.technicianCSAT || {};
+    
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de satisfacción por técnico disponibles</div>';
+        return;
+    }
 
-            let html = '<div class="table-responsive"><table class="table table-striped">';
-            html += `
-                <thead>
-                    <tr>
-                        <th>Técnico</th>
-                        <th>Total Encuestas</th>
-                        <th>CSAT Promedio</th>
-                        <th>Excelentes (4-5⭐)</th>
-                        <th>Pobres (1-2⭐)</th>
-                        <th>Rating</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
+    let html = '<div class="table-responsive"><table class="table table-striped">';
+    html += `
+        <thead>
+            <tr>
+                <th>Técnico</th>
+                <th>Total Encuestas</th>
+                <th>CSAT Promedio</th>
+                <th>Excelentes (4-5⭐)</th>
+                <th>Pobres (1-2⭐)</th>
+                <th>Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
-            Object.entries(data).forEach(([technician, stats]) => {
-                const csatClass = stats.average_csat >= 4 ? 'success' : 
-                                stats.average_csat >= 3 ? 'warning' : 'danger';
-                const stars = '⭐'.repeat(Math.round(stats.average_csat));
-                
-                html += `
-                    <tr>
-                        <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
-                        <td><span class="badge bg-info">${stats.total_surveys}</span></td>
-                        <td>
-                            <span class="text-${csatClass} fw-bold">${stats.average_csat}</span>
-                            <small class="text-muted ms-1">${stars}</small>
-                        </td>
-                        <td><span class="badge bg-success">${stats.excellent_ratings}</span></td>
-                        <td><span class="badge bg-danger">${stats.poor_ratings}</span></td>
-                        <td>
-                            <div class="progress" style="width: 80px; height: 6px;">
-                                <div class="progress-bar bg-${csatClass}" style="width: ${(stats.average_csat / 5) * 100}%"></div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
+    Object.entries(data).forEach(([technician, stats]) => {
+        // Manejar valores undefined o faltantes
+        const totalSurveys = stats.total_surveys || 0;
+        const averageCsat = stats.average_csat || 0;
+        const excellentRatings = stats.excellent_ratings || 0;
+        const poorRatings = stats.poor_ratings || 0;
+        
+        const csatClass = averageCsat >= 4 ? 'success' : 
+                        averageCsat >= 3 ? 'warning' : 'danger';
+        const stars = '⭐'.repeat(Math.round(averageCsat));
+        
+        html += `
+            <tr>
+                <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
+                <td><span class="badge bg-info">${totalSurveys}</span></td>
+                <td>
+                    <span class="text-${csatClass} fw-bold">${averageCsat.toFixed(1)}</span>
+                    <small class="text-muted ms-1">${stars}</small>
+                </td>
+                <td><span class="badge bg-success">${excellentRatings}</span></td>
+                <td><span class="badge bg-danger">${poorRatings}</span></td>
+                <td>
+                    <div class="progress" style="width: 80px; height: 6px;">
+                        <div class="progress-bar bg-${csatClass}" style="width: ${(averageCsat / 5) * 100}%"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
 
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+    function updateTechnicianResolution() {
+    const container = document.getElementById('technicianResolutionStats');
+    const data = dashboardData.technicianResolution || {};
+    
+    if (Object.keys(data).length === 0) {
+        container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de tiempo de resolución por técnico disponibles</div>';
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-striped">';
+    html += `
+        <thead>
+            <tr>
+                <th>Técnico</th>
+                <th>Total Resueltos</th>
+                <th>Tiempo Promedio</th>
+                <th>Mín / Máx</th>
+                <th>Rápidas (<24h)</th>
+                <th>Lentas (>72h)</th>
+                <th>Eficiencia</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    Object.entries(data).forEach(([technician, stats]) => {
+        // Manejar valores undefined o faltantes
+        const totalResolved = stats.total_resolved || 0;
+        const avgResolutionHours = stats.avg_resolution_hours || 0;
+        const minResolutionHours = stats.min_resolution_hours || 0;
+        const maxResolutionHours = stats.max_resolution_hours || 0;
+        const fastResolutions = stats.fast_resolutions || 0;
+        const slowResolutions = stats.slow_resolutions || 0;
+        
+        // Calcular eficiencia si no está disponible
+        let efficiencyScore = stats.efficiency_score;
+        if (efficiencyScore === undefined || efficiencyScore === null) {
+            efficiencyScore = totalResolved > 0 ? (fastResolutions / totalResolved) * 100 : 0;
         }
+        
+        const efficiencyClass = efficiencyScore >= 70 ? 'success' : 
+                              efficiencyScore >= 40 ? 'warning' : 'danger';
+        
+        html += `
+            <tr>
+                <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
+                <td><span class="badge bg-primary">${totalResolved}</span></td>
+                <td class="fw-bold">${avgResolutionHours.toFixed(1)}h</td>
+                <td>
+                    <small class="text-muted">
+                        ${minResolutionHours.toFixed(1)}h / ${maxResolutionHours.toFixed(1)}h
+                    </small>
+                </td>
+                <td><span class="badge bg-success">${fastResolutions}</span></td>
+                <td><span class="badge bg-warning">${slowResolutions}</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress me-2" style="width: 60px; height: 6px;">
+                            <div class="progress-bar bg-${efficiencyClass}" style="width: ${efficiencyScore}%"></div>
+                        </div>
+                        <span class="text-${efficiencyClass} fw-bold">${Math.round(efficiencyScore)}%</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
 
-        function updateTechnicianResolution() {
-            const container = document.getElementById('technicianResolutionStats');
-            const data = dashboardData.technicianResolution || {};
-            
-            if (Object.keys(data).length === 0) {
-                container.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No hay datos de tiempo de resolución por técnico disponibles</div>';
-                return;
-            }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
 
-            let html = '<div class="table-responsive"><table class="table table-striped">';
-            html += `
-                <thead>
-                    <tr>
-                        <th>Técnico</th>
-                        <th>Total Resueltos</th>
-                        <th>Tiempo Promedio</th>
-                        <th>Mín / Máx</th>
-                        <th>Rápidas (<24h)</th>
-                        <th>Lentas (>72h)</th>
-                        <th>Eficiencia</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-
-            Object.entries(data).forEach(([technician, stats]) => {
-                const efficiencyScore = (stats.fast_resolutions / stats.total_resolved) * 100;
-                const efficiencyClass = efficiencyScore >= 70 ? 'success' : 
-                                      efficiencyScore >= 40 ? 'warning' : 'danger';
-                
-                html += `
-                    <tr>
-                        <td class="fw-medium">${technician.length > 30 ? technician.substring(0, 30) + '...' : technician}</td>
-                        <td><span class="badge bg-primary">${stats.total_resolved}</span></td>
-                        <td class="fw-bold">${stats.avg_resolution_hours}h</td>
-                        <td>
-                            <small class="text-muted">
-                                ${stats.min_resolution_hours}h / ${stats.max_resolution_hours}h
-                            </small>
-                        </td>
-                        <td><span class="badge bg-success">${stats.fast_resolutions}</span></td>
-                        <td><span class="badge bg-warning">${stats.slow_resolutions}</span></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="progress me-2" style="width: 60px; height: 6px;">
-                                    <div class="progress-bar bg-${efficiencyClass}" style="width: ${efficiencyScore}%"></div>
-                                </div>
-                                <span class="text-${efficiencyClass} fw-bold">${Math.round(efficiencyScore)}%</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
 
         function createInsightCard(title, count, recommendation, icon, type) {
             return `

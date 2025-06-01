@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Dashboard IT - Clínica Bonsana</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bonsana-red: #dc3545;
+            --bonsana-red-dark: #b02a37;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%) !important;
+        }
+        
+        .error-container {
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+        }
+        
+        .error-icon {
+            font-size: 5rem;
+            color: var(--bonsana-red);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-hospital me-2"></i>
+                Clínica Bonsana - Dashboard IT
+            </a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="error-container">
+            <div class="row w-100">
+                <div class="col-12">
+                    <div class="text-center">
+                        <i class="bi bi-exclamation-triangle error-icon mb-4"></i>
+                        
+                        <h1 class="display-4 text-danger mb-3">
+                            Error {{ error_code or 500 }}
+                        </h1>
+                        
+                        <div class="alert alert-danger mx-auto" style="max-width: 600px;">
+                            <h4 class="alert-heading">
+                                <i class="bi bi-exclamation-circle me-2"></i>
+                                {% if error_code == 404 %}
+                                    Página no encontrada
+                                {% elif error_code == 500 %}
+                                    Error interno del servidor
+                                {% else %}
+                                    Ha ocurrido un error
+                                {% endif %}
+                            </h4>
+                            <p class="mb-0">
+                                {{ error or "Lo sentimos, ha ocurrido un error inesperado." }}
+                            </p>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-3">
+                                <i class="bi bi-house me-2"></i>
+                                Volver al Dashboard
+                            </a>
+                            
+                            <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Volver Atrás
+                            </button>
+                        </div>
+                        
+                        <div class="mt-5">
+                            <h6 class="text-muted">Rutas disponibles:</h6>
+                            <div class="list-group list-group-horizontal-md justify-content-center">
+                                <a href="{{ url_for('index') }}" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-speedometer2 me-1"></i>Dashboard Principal
+                                </a>
+                                {% if config.AI_ANALYSIS_ENABLED %}
+                                <a href="/ai-analysis" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-brain me-1"></i>Análisis de IA
+                                </a>
+                                <a href="/ai-dashboard" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-activity me-1"></i>Monitoreo de IA
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('health_check') }}" class="list-group-item list-group-item-action">
+                                    <i class="bi bi-heart-pulse me-1"></i>Health Check
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

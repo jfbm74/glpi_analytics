@@ -1,0 +1,29 @@
+# Dependencias adicionales para el módulo de IA
+# Agregar estas líneas al requirements.txt existente
+
+# Google AI Gemini API
+google-generativeai>=0.3.0
+
+# Utilidades de procesamiento de texto
+markdown>=3.5.0
+beautifulsoup4>=4.12.0
+
+# Validación de datos mejorada
+pydantic>=2.5.0
+
+# Manejo de archivos adicionales
+python-docx>=0.8.11
+reportlab>=4.0.0
+
+# Logging mejorado
+structlog>=23.1.0
+
+# Cache y almacenamiento temporal
+diskcache>=5.6.0
+
+# Análisis de sentimientos y texto (opcional)
+textblob>=0.17.1
+
+# Exportación a diferentes formatos
+fpdf2>=2.7.0
+xlsxwriter>=3.1.0

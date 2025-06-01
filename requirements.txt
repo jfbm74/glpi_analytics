@@ -1,9 +1,29 @@
-Flask==2.3.3
-pandas
-numpy
-Werkzeug==2.3.7
-Jinja2==3.1.2
-MarkupSafe==2.1.3
-itsdangerous==2.1.2
-click==8.1.7
-blinker==1.6.2
+# Dashboard IT - Clínica Bonsana
+# Dependencias principales
+Flask>=2.3.0
+pandas>=2.0.0
+python-dotenv>=1.0.0
+
+# Análisis de IA
+google-generativeai>=0.3.0
+markdown>=3.5.0
+beautifulsoup4>=4.12.0
+
+# Utilidades
+requests>=2.31.0
+Jinja2>=3.1.0
+Werkzeug>=2.3.0
+
+# Procesamiento de datos
+numpy>=1.24.0
+python-dateutil>=2.8.0
+
+# Exportación y reportes
+reportlab>=4.0.0
+fpdf2>=2.7.0
+xlsxwriter>=3.1.0
+
+# Opcional: desarrollo
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0

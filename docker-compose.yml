@@ -1,88 +1,42 @@
-# Dashboard IT - Clínica Bonsana
-# Docker Compose para orquestación de servicios
+# Docker Compose para Dashboard IT - Clínica Bonsana
+# Configuración completa con todos los servicios
 
 version: '3.8'
 
 services:
-  # Aplicación principal del dashboard
+  # Aplicación principal
   dashboard:
-    build:
+    build: 
       context: .
       dockerfile: Dockerfile
-      target: production
-    container_name: dashboard_bonsana
+    container_name: dashboard_it_bonsana
     restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      # Volúmenes para persistencia de datos
-      - dashboard_data:/app/data
-      - dashboard_logs:/app/logs
-      - dashboard_backups:/app/backups
-      # Montaje opcional para configuración personalizada
-      - ./config.json:/app/config.json:ro
     environment:
       - FLASK_ENV=production
-      - SECRET_KEY=${SECRET_KEY:-default-secret-key-change-in-production}
-      - DATA_DIRECTORY=/app/data
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - CACHE_TIMEOUT=${CACHE_TIMEOUT:-600}
+      - HOST=0.0.0.0
+      - PORT=5000
+      - WORKERS=4
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://dashboard_user:dashboard_pass@postgres:5432/dashboard_db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    depends_on:
+      - redis
+      - postgres
     networks:
       - dashboard_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`dashboard.clinicabonsana.local`)"
-      - "traefik.http.services.dashboard.loadbalancer.server.port=80"
+      start_period: 40s
 
-  # Redis para cache (opcional, para futuras mejoras)
-  redis:
-    image: redis:7-alpine
-    container_name: dashboard_redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - dashboard_network
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # PostgreSQL para futuras expansiones (opcional)
-  postgres:
-    image: postgres:15-alpine
-    container_name: dashboard_postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB:-dashboard_db}
-      - POSTGRES_USER=${POSTGRES_USER:-dashboard_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dashboard_password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    networks:
-      - dashboard_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dashboard_user}"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # Nginx para balanceador de carga (opcional para múltiples instancias)
+  # Nginx como reverse proxy
   nginx:
-    image: nginx:alpine
+    image: nginx:1.24-alpine
     container_name: dashboard_nginx
     restart: unless-stopped
     ports:
@@ -90,19 +44,59 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-available:/etc/nginx/sites-available:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
-      - dashboard_logs:/var/log/nginx
-    networks:
-      - dashboard_network
+      - ./logs/nginx:/var/log/nginx
     depends_on:
       - dashboard
+    networks:
+      - dashboard_network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # Prometheus para monitoreo (opcional)
+  # Redis para cache y sesiones
+  redis:
+    image: redis:7.0-alpine
+    container_name: dashboard_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_password_change_this
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - dashboard_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL para datos de producción
+  postgres:
+    image: postgres:15-alpine
+    container_name: dashboard_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=dashboard_db
+      - POSTGRES_USER=dashboard_user
+      - POSTGRES_PASSWORD=dashboard_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=es_ES.UTF-8 --lc-ctype=es_ES.UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./backups/postgres:/backups
+    networks:
+      - dashboard_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dashboard_user -d dashboard_db"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # Monitoreo con Prometheus (opcional)
   prometheus:
     image: prom/prometheus:latest
     container_name: dashboard_prometheus
@@ -112,17 +106,19 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
-    networks:
-      - dashboard_network
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
+      - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
+    networks:
+      - dashboard_network
+    profiles:
+      - monitoring
 
-  # Grafana para visualización de métricas (opcional)
+  # Grafana para visualización (opcional)
   grafana:
     image: grafana/grafana:latest
     container_name: dashboard_grafana
@@ -130,230 +126,48 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password_change_this
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
-    networks:
-      - dashboard_network
-    depends_on:
-      - prometheus
-
-# Configuración para desarrollo
-  dashboard_dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: development
-    container_name: dashboard_bonsana_dev
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    volumes:
-      # Montaje del código fuente para desarrollo
-      - .:/app
-      - dashboard_data_dev:/app/data
-      - dashboard_logs_dev:/app/logs
-    environment:
-      - FLASK_ENV=development
-      - FLASK_DEBUG=1
-      - USE_SAMPLE_DATA=true
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     networks:
       - dashboard_network
     profiles:
-      - dev
+      - monitoring
 
-# Redes
-networks:
-  dashboard_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/24
+  # Backup automático
+  backup:
+    image: postgres:15-alpine
+    container_name: dashboard_backup
+    restart: "no"
+    environment:
+      - PGPASSWORD=dashboard_pass
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    networks:
+      - dashboard_network
+    command: /backup.sh
+    profiles:
+      - backup
 
-# Volúmenes
+# Volúmenes persistentes
 volumes:
-  # Datos de la aplicación
-  dashboard_data:
-    driver: local
-  dashboard_logs:
-    driver: local
-  dashboard_backups:
-    driver: local
-  
-  # Datos de desarrollo
-  dashboard_data_dev:
-    driver: local
-  dashboard_logs_dev:
-    driver: local
-  
-  # Servicios adicionales
-  redis_data:
-    driver: local
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
 
-# --- Configuración adicional para diferentes entornos ---
-
-# Para usar solo los servicios básicos (desarrollo local):
-# docker-compose up dashboard redis
-
-# Para desarrollo con recarga automática:
-# docker-compose --profile dev up dashboard_dev
-
-# Para producción completa:
-# docker-compose up -d dashboard nginx redis postgres
-
-# Para monitoreo completo:
-# docker-compose up -d dashboard nginx redis prometheus grafana
-
----
-# docker-compose.override.yml - Configuración específica para desarrollo
-# Este archivo se carga automáticamente en desarrollo
-
-version: '3.8'
-
-services:
-  dashboard:
-    environment:
-      - FLASK_DEBUG=1
-      - LOG_LEVEL=DEBUG
-    volumes:
-      # Montar código fuente para desarrollo
-      - .:/app
-    ports:
-      - "5000:5000"
-
-  # Agregar herramientas de desarrollo
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: dashboard_pgadmin
-    restart: unless-stopped
-    ports:
-      - "5050:80"
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@clinicabonsana.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - dashboard_network
-    depends_on:
-      - postgres
-    profiles:
-      - dev
-
-volumes:
-  pgadmin_data:
-    driver: local
-
----
-# docker-compose.prod.yml - Configuración específica para producción
-# Usar con: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
-
-version: '3.8'
-
-services:
-  dashboard:
-    deploy:
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    environment:
-      - FLASK_ENV=production
-      - WEB_CONCURRENCY=4
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  nginx:
-    deploy:
-      restart_policy:
-        condition: on-failure
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  redis:
-    deploy:
-      restart_policy:
-        condition: on-failure
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  postgres:
-    deploy:
-      restart_policy:
-        condition: on-failure
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
----
-# .env.example - Variables de entorno para Docker Compose
-# Copiar como .env y personalizar
-
-# Configuración de la aplicación
-SECRET_KEY=your-super-secret-key-here
-FLASK_ENV=production
-LOG_LEVEL=INFO
-CACHE_TIMEOUT=600
-
-# Base de datos PostgreSQL
-POSTGRES_DB=dashboard_db
-POSTGRES_USER=dashboard_user
-POSTGRES_PASSWORD=secure_password_here
-
-# Grafana
-GRAFANA_PASSWORD=secure_grafana_password
-
-# Red y puertos
-DASHBOARD_PORT=8080
-NGINX_HTTP_PORT=80
-NGINX_HTTPS_PORT=443
-
-# Configuración de SSL (para HTTPS)
-SSL_CERT_PATH=./ssl/cert.pem
-SSL_KEY_PATH=./ssl/key.pem
-
-# Configuración de backup
-BACKUP_SCHEDULE=0 2 * * *  # Diario a las 2 AM
-BACKUP_RETENTION_DAYS=30
-
-# Monitoreo
-ENABLE_MONITORING=true
-PROMETHEUS_RETENTION=200h
-
-# Configuración de email (para alertas)
-SMTP_SERVER=smtp.clinicabonsana.com
-SMTP_PORT=587
-SMTP_USER=dashboard@clinicabonsana.com
-SMTP_PASSWORD=email_password_here
-
-# Configuración de dominio
-DOMAIN_NAME=dashboard.clinicabonsana.com
-ENABLE_HTTPS=true
+# Red personalizada
+networks:
+  dashboard_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
