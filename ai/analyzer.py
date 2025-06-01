@@ -1,5 +1,5 @@
 """
-Analizador principal de IA para el Dashboard IT
+Analizador principal de IA para el Dashboard IT - CORREGIDO COMPLETAMENTE
 """
 
 import os
@@ -8,6 +8,11 @@ import pandas as pd
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 import logging
+
+try:
+    from flask import current_app
+except ImportError:
+    current_app = None
 
 from .gemini_client import GeminiClient
 from .prompts import PromptManager
@@ -21,21 +26,42 @@ class AIAnalyzer:
         
         Args:
             data_path: Directorio donde se encuentran los datos
-            api_key: API key de Google AI
+            api_key: API key de Google AI (opcional, se obtiene de Flask config si no se proporciona)
         """
         self.data_path = data_path
         self.logger = logging.getLogger(__name__)
         
+        # Obtener API key de Flask config si está disponible
+        if not api_key:
+            try:
+                if current_app:
+                    api_key = current_app.config.get('GOOGLE_AI_API_KEY')
+                    self.logger.info("API key obtenida desde configuración de Flask")
+            except RuntimeError:
+                # No estamos en contexto de Flask, usar variable de entorno
+                pass
+            
+            if not api_key:
+                api_key = os.getenv('GOOGLE_AI_API_KEY')
+                self.logger.info("API key obtenida desde variable de entorno")
+        
+        if not api_key:
+            raise ValueError("API key de Google AI es requerida. Configura GOOGLE_AI_API_KEY en el archivo .env")
+        
         # Inicializar cliente Gemini con el modelo especificado
+        model_name = os.getenv('GOOGLE_AI_MODEL', 'gemini-2.0-flash-exp')
+        
         self.gemini = GeminiClient(
-            api_key=api_key or "AIzaSyALkC-uoOfpS3cB-vnaj8Zor3ccp5MVOBQ",
-            model_name="gemini-2.0-flash-exp"  # Modelo más reciente disponible
+            api_key=api_key,
+            model_name=model_name
         )
         
         self.prompt_manager = PromptManager()
         
         # Cache para análisis recientes
         self.analysis_cache = {}
+        
+        self.logger.info(f"AIAnalyzer inicializado con modelo {model_name}")
         
     def get_dashboard_context(self) -> Dict[str, Any]:
         """
@@ -120,6 +146,13 @@ class AIAnalyzer:
             
             # Preparar datos del CSV
             csv_path = os.path.join(self.data_path, "glpi.csv")
+            if not os.path.exists(csv_path):
+                return {
+                    "success": False,
+                    "error": f"Archivo CSV no encontrado: {csv_path}",
+                    "analysis_type": "comprehensive"
+                }
+            
             csv_data = self.gemini.prepare_csv_data(csv_path)
             
             # Obtener prompt comprehensivo
@@ -165,6 +198,13 @@ class AIAnalyzer:
             
             # Para análisis rápido, usar solo un subconjunto de datos
             csv_path = os.path.join(self.data_path, "glpi.csv")
+            if not os.path.exists(csv_path):
+                return {
+                    "success": False,
+                    "error": f"Archivo CSV no encontrado: {csv_path}",
+                    "analysis_type": "quick"
+                }
+            
             csv_data = self.gemini.prepare_csv_data(csv_path, max_rows=200)
             
             # Obtener prompt de análisis rápido
@@ -220,6 +260,15 @@ class AIAnalyzer:
             # Obtener contexto y datos
             context = self.get_dashboard_context()
             csv_path = os.path.join(self.data_path, "glpi.csv")
+            
+            # Verificar que el archivo CSV existe
+            if not os.path.exists(csv_path):
+                return {
+                    "success": False,
+                    "error": f"Archivo CSV no encontrado: {csv_path}",
+                    "analysis_type": analysis_type
+                }
+            
             csv_data = self.gemini.prepare_csv_data(csv_path)
             
             # Ejecutar análisis
@@ -312,7 +361,17 @@ class AIAnalyzer:
         Returns:
             Resultado de la prueba
         """
-        return self.gemini.test_connection()
+        try:
+            result = self.gemini.test_connection()
+            self.logger.info(f"Test de conexión IA: {result.get('success', False)}")
+            return result
+        except Exception as e:
+            self.logger.error(f"Error en test de conexión IA: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "model": getattr(self.gemini, 'model_name', 'unknown')
+            }
     
     def get_available_analysis_types(self) -> Dict[str, str]:
         """
@@ -330,4 +389,12 @@ class AIAnalyzer:
         Returns:
             Información del modelo
         """
-        return self.gemini.get_model_info()
+        try:
+            return self.gemini.get_model_info()
+        except Exception as e:
+            self.logger.error(f"Error obteniendo info del modelo: {str(e)}")
+            return {
+                "model_name": getattr(self.gemini, 'model_name', 'unknown'),
+                "available": False,
+                "error": str(e)
+            }

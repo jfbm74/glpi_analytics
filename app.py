@@ -200,9 +200,10 @@ def setup_main_routes(app):
             # Verificar IA si está habilitada
             if app.config['AI_ANALYSIS_ENABLED']:
                 try:
+                    # Importar solo cuando sea necesario para evitar import circular
                     from ai.analyzer import AIAnalyzer
-                    analyzer = AIAnalyzer()
-                    ai_test = analyzer.test_ai_connection()
+                    test_analyzer = AIAnalyzer(data_path=app.config['DATA_DIRECTORY'])
+                    ai_test = test_analyzer.test_ai_connection()
                     health_status['components']['ai'] = {
                         'status': 'healthy' if ai_test.get('success') else 'unhealthy',
                         'api_key_configured': bool(app.config.get('GOOGLE_AI_API_KEY'))
@@ -296,6 +297,8 @@ def setup_main_routes(app):
         except Exception as e:
             app.logger.error(f"Error obteniendo SLA: {e}")
             return jsonify({'error': 'Error obteniendo SLA'}), 500
+        
+    
     
     @app.route('/api/csat')
     def get_csat():
@@ -379,6 +382,7 @@ def setup_main_routes(app):
             return render_template('error.html', 
                                  error=f"Error cargando página de análisis: {str(e)}", 
                                  error_code=500), 500
+    
     
     # Ruta de debug para development
     @app.route('/debug/routes')

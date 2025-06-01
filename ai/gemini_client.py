@@ -1,5 +1,5 @@
 """
-Cliente para Google AI Gemini API
+Cliente para Google AI Gemini API - CORREGIDO Y VERIFICADO
 """
 
 import google.generativeai as genai
@@ -26,7 +26,10 @@ class GeminiClient:
         self.logger = logging.getLogger(__name__)
         
         if not self.api_key:
-            raise ValueError("API key de Google AI es requerida")
+            raise ValueError("API key de Google AI es requerida. Configura GOOGLE_AI_API_KEY en el archivo .env")
+        
+        # Log de configuración
+        self.logger.info(f"Inicializando GeminiClient con API key: {self.api_key[:20]}...")
         
         # Configurar Google AI
         genai.configure(api_key=self.api_key)
@@ -64,7 +67,7 @@ class GeminiClient:
                 generation_config=self.generation_config,
                 safety_settings=self.safety_settings
             )
-            self.logger.info(f"Cliente Gemini inicializado con modelo {self.model_name}")
+            self.logger.info(f"Cliente Gemini inicializado exitosamente con modelo {self.model_name}")
         except Exception as e:
             self.logger.error(f"Error al inicializar Gemini: {str(e)}")
             raise
@@ -81,17 +84,25 @@ class GeminiClient:
             Datos formateados como string
         """
         try:
+            # Verificar que el archivo existe
+            if not os.path.exists(csv_path):
+                raise FileNotFoundError(f"Archivo CSV no encontrado: {csv_path}")
+            
+            self.logger.info(f"Preparando datos CSV desde: {csv_path}")
+            
             # Leer CSV
             df = pd.read_csv(csv_path, delimiter=';', encoding='utf-8')
             
             # Limitar filas si es necesario
+            original_rows = len(df)
             if len(df) > max_rows:
                 df = df.head(max_rows)
-                self.logger.warning(f"CSV limitado a {max_rows} filas para el análisis")
+                self.logger.warning(f"CSV limitado a {max_rows} filas (original: {original_rows} filas)")
             
             # Información básica del dataset
             data_info = {
                 "total_rows": len(df),
+                "original_rows": original_rows,
                 "columns": list(df.columns),
                 "summary_stats": {}
             }
@@ -105,19 +116,23 @@ class GeminiClient:
             
             for col in key_columns:
                 if col in df.columns:
-                    if df[col].dtype == 'object':
-                        data_info["summary_stats"][col] = df[col].value_counts().to_dict()
-                    else:
-                        data_info["summary_stats"][col] = {
-                            "mean": df[col].mean(),
-                            "median": df[col].median(),
-                            "std": df[col].std()
-                        }
+                    try:
+                        if df[col].dtype == 'object':
+                            data_info["summary_stats"][col] = df[col].value_counts().head(10).to_dict()
+                        else:
+                            data_info["summary_stats"][col] = {
+                                "mean": float(df[col].mean()) if not df[col].isna().all() else 0,
+                                "median": float(df[col].median()) if not df[col].isna().all() else 0,
+                                "std": float(df[col].std()) if not df[col].isna().all() else 0
+                            }
+                    except Exception as e:
+                        self.logger.warning(f"Error procesando columna {col}: {str(e)}")
+                        data_info["summary_stats"][col] = "Error al procesar"
             
             # Convertir a formato de texto estructurado
             formatted_data = f"""
 INFORMACIÓN DEL DATASET:
-- Total de registros: {data_info['total_rows']}
+- Total de registros analizados: {data_info['total_rows']} (de {data_info['original_rows']} originales)
 - Columnas disponibles: {', '.join(data_info['columns'])}
 
 ESTADÍSTICAS RESUMIDAS:
@@ -126,10 +141,11 @@ ESTADÍSTICAS RESUMIDAS:
 MUESTRA DE DATOS (primeras 20 filas):
 {df.head(20).to_string(index=False)}
 
-DATOS COMPLETOS DEL CSV:
+DATOS COMPLETOS PARA ANÁLISIS:
 {df.to_string(index=False)}
 """
             
+            self.logger.info(f"Datos CSV preparados: {len(df)} filas, {len(df.columns)} columnas")
             return formatted_data
             
         except Exception as e:
@@ -153,17 +169,23 @@ DATOS COMPLETOS DEL CSV:
             full_prompt = f"""
 {prompt}
 
-DATOS DEL DASHBOARD:
+CONTEXTO DEL DASHBOARD:
 {json.dumps(context, indent=2, ensure_ascii=False, default=str) if context else 'No disponible'}
 
-DATOS DETALLADOS DEL CSV:
+DATOS DETALLADOS PARA ANÁLISIS:
 {csv_data}
 
-Por favor, proporciona un análisis exhaustivo y estructurado siguiendo exactamente las secciones solicitadas.
-Usa formato Markdown para una mejor presentación.
+INSTRUCCIONES ESPECÍFICAS:
+- Proporciona un análisis exhaustivo y estructurado siguiendo exactamente las secciones solicitadas
+- Usa formato Markdown para una mejor presentación
+- Incluye insights accionables y recomendaciones específicas
+- Considera el contexto de una clínica especializada en fracturas
+- Enfócate en métricas relevantes para el sector salud
 """
             
             self.logger.info("Iniciando análisis con Gemini AI...")
+            self.logger.debug(f"Prompt length: {len(full_prompt)} caracteres")
+            
             start_time = time.time()
             
             # Generar respuesta
@@ -174,6 +196,9 @@ Usa formato Markdown para una mejor presentación.
             
             # Procesar respuesta
             if response.text:
+                response_length = len(response.text)
+                self.logger.info(f"Respuesta recibida: {response_length} caracteres")
+                
                 return {
                     "success": True,
                     "analysis": response.text,
@@ -181,9 +206,11 @@ Usa formato Markdown para una mejor presentación.
                     "processing_time": duration,
                     "timestamp": time.time(),
                     "prompt_tokens": len(full_prompt.split()),
-                    "response_tokens": len(response.text.split())
+                    "response_tokens": len(response.text.split()),
+                    "response_length": response_length
                 }
             else:
+                self.logger.warning("No se recibió respuesta del modelo")
                 return {
                     "success": False,
                     "error": "No se recibió respuesta del modelo",
@@ -195,7 +222,8 @@ Usa formato Markdown para una mejor presentación.
             return {
                 "success": False,
                 "error": str(e),
-                "model_used": self.model_name
+                "model_used": self.model_name,
+                "error_type": type(e).__name__
             }
     
     def get_model_info(self) -> Dict[str, Any]:
@@ -206,12 +234,14 @@ Usa formato Markdown para una mejor presentación.
             Información del modelo
         """
         try:
+            self.logger.info("Obteniendo información del modelo...")
             models = list(genai.list_models())
             current_model = next((m for m in models if self.model_name in m.name), None)
             
             return {
                 "model_name": self.model_name,
                 "available": current_model is not None,
+                "total_models_available": len(models),
                 "details": {
                     "name": current_model.name if current_model else "N/A",
                     "description": current_model.description if current_model else "N/A",
@@ -224,7 +254,8 @@ Usa formato Markdown para una mejor presentación.
             return {
                 "model_name": self.model_name,
                 "available": False,
-                "error": str(e)
+                "error": str(e),
+                "error_type": type(e).__name__
             }
     
     def test_connection(self) -> Dict[str, Any]:
@@ -235,18 +266,36 @@ Usa formato Markdown para una mejor presentación.
             Resultado de la prueba
         """
         try:
-            test_prompt = "Responde brevemente: '¿Estás funcionando correctamente?'"
-            response = self.model.generate_content(test_prompt)
+            self.logger.info("Probando conexión con Gemini AI...")
             
-            return {
-                "success": True,
-                "message": "Conexión exitosa con Gemini AI",
-                "response": response.text,
-                "model": self.model_name
-            }
+            test_prompt = "Responde brevemente: 'Conexión exitosa con Gemini AI. Sistema funcionando correctamente.'"
+            start_time = time.time()
+            
+            response = self.model.generate_content(test_prompt)
+            duration = time.time() - start_time
+            
+            if response.text:
+                self.logger.info(f"Test de conexión exitoso en {duration:.2f}s")
+                return {
+                    "success": True,
+                    "message": "Conexión exitosa con Gemini AI",
+                    "response": response.text,
+                    "model": self.model_name,
+                    "response_time": duration,
+                    "api_key_preview": self.api_key[:20] + "..."
+                }
+            else:
+                self.logger.warning("Test de conexión falló: sin respuesta")
+                return {
+                    "success": False,
+                    "error": "No se recibió respuesta en el test",
+                    "model": self.model_name
+                }
         except Exception as e:
+            self.logger.error(f"Error en test de conexión: {str(e)}")
             return {
                 "success": False,
                 "error": str(e),
-                "model": self.model_name
+                "model": self.model_name,
+                "error_type": type(e).__name__
             }

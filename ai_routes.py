@@ -1,8 +1,8 @@
 """
-Rutas de Flask para el módulo de IA
+Rutas de Flask para el módulo de IA - CORREGIDO COMPLETAMENTE
 """
 
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, current_app
 import os
 import logging
 from datetime import datetime
@@ -10,8 +10,8 @@ import traceback
 
 from ai.analyzer import AIAnalyzer
 
-# Crear blueprint para las rutas de IA
-ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+# Crear blueprint para las rutas de IA con prefijo correcto
+ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -23,19 +23,30 @@ def init_ai_analyzer(data_path="data"):
     """Inicializa el analizador de IA"""
     global analyzer
     try:
-        analyzer = AIAnalyzer(data_path=data_path)
+        # Obtener API key desde Flask config
+        api_key = None
+        
+        try:
+            if current_app:
+                api_key = current_app.config.get('GOOGLE_AI_API_KEY')
+                logger.info("Usando API key desde configuración de Flask")
+        except RuntimeError:
+            # No estamos en contexto de Flask
+            api_key = os.getenv('GOOGLE_AI_API_KEY')
+            logger.info("Usando API key desde variable de entorno")
+        
+        if not api_key:
+            logger.error("No se encontró API key de Google AI")
+            return False
+        
+        analyzer = AIAnalyzer(data_path=data_path, api_key=api_key)
         logger.info("Analizador de IA inicializado exitosamente")
         return True
     except Exception as e:
         logger.error(f"Error al inicializar analizador de IA: {str(e)}")
         return False
 
-@ai_bp.route('/')
-def ai_analysis_page():
-    """Página principal de análisis de IA"""
-    return render_template('ai_analysis.html')
-
-@ai_bp.route('/api/ai/test-connection', methods=['GET'])
+@ai_bp.route('/test-connection', methods=['GET'])
 def test_ai_connection():
     """Prueba la conexión con la API de IA"""
     try:
@@ -55,7 +66,7 @@ def test_ai_connection():
             "error": str(e)
         }), 500
 
-@ai_bp.route('/api/ai/model-info', methods=['GET'])
+@ai_bp.route('/model-info', methods=['GET'])
 def get_model_info():
     """Obtiene información del modelo de IA"""
     try:
@@ -77,15 +88,8 @@ def get_model_info():
             "success": False,
             "error": str(e)
         }), 500
-        
-    except Exception as e:
-        logger.error(f"Error al obtener info del modelo: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
 
-@ai_bp.route('/api/ai/analyze', methods=['POST'])
+@ai_bp.route('/analyze', methods=['POST'])
 def run_analysis():
     """Ejecuta análisis de IA"""
     try:
@@ -135,7 +139,7 @@ def run_analysis():
             "traceback": traceback.format_exc() if logger.level == logging.DEBUG else None
         }), 500
 
-@ai_bp.route('/api/ai/history', methods=['GET'])
+@ai_bp.route('/history', methods=['GET'])
 def get_analysis_history():
     """Obtiene historial de análisis"""
     try:
@@ -158,7 +162,7 @@ def get_analysis_history():
             "error": str(e)
         }), 500
 
-@ai_bp.route('/api/ai/save-analysis', methods=['POST'])
+@ai_bp.route('/save-analysis', methods=['POST'])
 def save_analysis():
     """Guarda análisis en archivo"""
     try:
@@ -198,7 +202,7 @@ def save_analysis():
             "error": str(e)
         }), 500
 
-@ai_bp.route('/api/ai/available-types', methods=['GET'])
+@ai_bp.route('/available-types', methods=['GET'])
 def get_available_analysis_types():
     """Obtiene tipos de análisis disponibles"""
     try:
@@ -221,7 +225,7 @@ def get_available_analysis_types():
             "error": str(e)
         }), 500
 
-@ai_bp.route('/api/ai/cached-analysis/<cache_key>', methods=['GET'])
+@ai_bp.route('/cached-analysis/<cache_key>', methods=['GET'])
 def get_cached_analysis(cache_key):
     """Obtiene análisis desde cache"""
     try:
@@ -251,7 +255,7 @@ def get_cached_analysis(cache_key):
             "error": str(e)
         }), 500
 
-@ai_bp.route('/api/ai/custom-analysis', methods=['POST'])
+@ai_bp.route('/custom-analysis', methods=['POST'])
 def run_custom_analysis():
     """Ejecuta análisis personalizado con prompt custom"""
     try:
