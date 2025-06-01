@@ -213,20 +213,6 @@ def setup_main_routes(app):
                         'error': str(e)
                     }
             
-            # Verificar cache
-            if app.cache:
-                try:
-                    app.cache.set('health_test', 'ok', timeout=5)
-                    cache_test = app.cache.get('health_test')
-                    health_status['components']['cache'] = {
-                        'status': 'healthy' if cache_test == 'ok' else 'unhealthy'
-                    }
-                except Exception as e:
-                    health_status['components']['cache'] = {
-                        'status': 'unhealthy',
-                        'error': str(e)
-                    }
-            
             # Determinar estado general
             component_statuses = [comp['status'] for comp in health_status['components'].values()]
             if 'unhealthy' in component_statuses:
@@ -364,8 +350,63 @@ def setup_main_routes(app):
     def ai_dashboard():
         """Dashboard de monitoreo de IA"""
         if not app.config['AI_ANALYSIS_ENABLED']:
+            return render_template('error.html', 
+                                 error="El módulo de IA no está habilitado", 
+                                 error_code=404), 404
+        
+        try:
+            return render_template('ai_dashboard.html')
+        except Exception as e:
+            app.logger.error(f"Error cargando dashboard IA: {e}")
+            return render_template('error.html', 
+                                 error=f"Error cargando dashboard IA: {str(e)}", 
+                                 error_code=500), 500
+    
+    # Ruta de análisis de IA - CORREGIDA
+    @app.route('/ai-analysis')
+    def ai_analysis():
+        """Página de análisis de IA"""
+        if not app.config['AI_ANALYSIS_ENABLED']:
+            return render_template('error.html', 
+                                 error="El módulo de IA no está habilitado", 
+                                 error_code=404), 404
+        
+        try:
+            # Renderizar directamente el template
+            return render_template('ai_analysis.html')
+        except Exception as e:
+            app.logger.error(f"Error cargando página de análisis IA: {e}")
+            return render_template('error.html', 
+                                 error=f"Error cargando página de análisis: {str(e)}", 
+                                 error_code=500), 500
+    
+    # Ruta de debug para development
+    @app.route('/debug/routes')
+    def debug_routes():
+        """Debug: muestra todas las rutas disponibles"""
+        if not app.config['DEBUG']:
             abort(404)
-        return render_template('ai_dashboard.html')
+        
+        routes = []
+        for rule in app.url_map.iter_rules():
+            routes.append({
+                'endpoint': rule.endpoint,
+                'methods': list(rule.methods - {'HEAD', 'OPTIONS'}),
+                'rule': rule.rule
+            })
+        
+        return jsonify({
+            'total_routes': len(routes),
+            'routes': sorted(routes, key=lambda x: x['rule'])
+        })
+
+    @app.route('/<path:path>')
+    def catch_all(path):
+        """Maneja rutas no encontradas"""
+        app.logger.warning(f"Ruta no encontrada: /{path}")
+        return render_template('error.html', 
+                             error=f"La ruta '/{path}' no existe", 
+                             error_code=404), 404
 
 def setup_error_handlers(app):
     """Configura manejadores de errores"""

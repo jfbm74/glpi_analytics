@@ -77,6 +77,13 @@ def get_model_info():
             "success": False,
             "error": str(e)
         }), 500
+        
+    except Exception as e:
+        logger.error(f"Error al obtener info del modelo: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @ai_bp.route('/api/ai/analyze', methods=['POST'])
 def run_analysis():
@@ -88,7 +95,20 @@ def run_analysis():
                 "error": "Analizador de IA no inicializado"
             }), 500
         
+        # Verificar Content-Type
+        if request.content_type != 'application/json':
+            return jsonify({
+                "success": False,
+                "error": "Content-Type debe ser application/json"
+            }), 400
+        
         data = request.get_json()
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "No se proporcionaron datos JSON"
+            }), 400
+            
         analysis_type = data.get('analysis_type', 'comprehensive')
         
         logger.info(f"Iniciando análisis tipo: {analysis_type}")
