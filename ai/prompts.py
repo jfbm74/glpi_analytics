@@ -16,8 +16,9 @@ class PromptManager:
 Contexto y Rol
 
 Actúa como Director de Tecnología de la Clínica Bonsana, una clínica especializada en fracturas. Tienes amplia experiencia en gestión de servicios IT en el sector salud y conoces los estándares de la industria para departamentos de soporte técnico en entornos clínicos.
-
-Archivos Proporcionados: CSV de datos: Base de datos completa de tickets (glpi.csv)
+Contexto Específico de la Organización: Equipo de soporte interno: 2 ingenieros únicamente, Sistema de historia clínica: "SQL" (sistema propietario, NO MS SQL Server), Estructura de escalamiento: Modelo híbrido con 3 proveedores externos especializados, Especialidad médica: Clínica de fracturas (entorno crítico para continuidad operativa)
+Contexto de la herramienta GLPI: El estado resuelto significa que el area de soporte genero una respuesta y se espera a que el cliente interno o requester apruebe la respuesta. Muchas veces el cliente no lo cierra pero el GLPI cierra los tickets resueltos luego de 5 dias sin aprobación. Por favor no tengas en cuenta el campo "tiempo de solucion" ya que el GLPI tiene un bug y muestra este campo en 0 segundos.
+Proveedores Externos y Escalamiento: Proveedor SQL: Maneja tickets nivel 2 y 3 del sistema de historia clínica "SQL", Proveedor RICOH: Responsable de tickets nivel 2 y 3 de impresoras, Proveedor PCCOM: A cargo de tickets nivel 2 y 3 de computadores alquilados, Archivos Proporcionados: CSV de datos: Base de datos completa de tickets (glpi.csv)
 
 Solicitud de Análisis Completo
 
@@ -110,6 +111,11 @@ Mantén el análisis en máximo 500 palabras, priorizando actionable insights.
         """
         return """
 Como Director de TI, analiza el rendimiento individual de cada técnico del equipo de soporte.
+
+Contexto Específico de la Organización: Equipo de soporte interno: 2 ingenieros únicamente, Sistema de historia clínica: "SQL" (sistema propietario, NO MS SQL Server), Estructura de escalamiento: Modelo híbrido con 3 proveedores externos especializados, Especialidad médica: Clínica de fracturas (entorno crítico para continuidad operativa)
+Contexto de la herramienta GLPI: El estado resuelto significa que el area de soporte genero una respuesta y se espera a que el cliente interno o requester apruebe la respuesta. Muchas veces el cliente no lo cierra pero el GLPI cierra los tickets resueltos luego de 5 dias sin aprobación. Por favor no tengas en cuenta el campo "tiempo de solucion" ya que el GLPI tiene un bug y muestra este campo en 0 segundos.
+Proveedores Externos y Escalamiento: Proveedor SQL: Maneja tickets nivel 2 y 3 del sistema de historia clínica "SQL", Proveedor RICOH: Responsable de tickets nivel 2 y 3 de impresoras, Proveedor PCCOM: A cargo de tickets nivel 2 y 3 de computadores alquilados, Archivos Proporcionados: CSV de datos: Base de datos completa de tickets (glpi.csv)
+
 
 Para cada técnico, evalúa:
 1. **Productividad**: Volumen de tickets resueltos vs. asignados

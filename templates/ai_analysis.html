@@ -11,24 +11,329 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Prism.js for syntax highlighting -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
+        /* Mantener variables de color Bonsana */
+        :root {
+            --bonsana-red: #dc3545;
+            --bonsana-red-light: #f8d7da;
+            --bonsana-red-dark: #b02a37;
+            --bonsana-white: #ffffff;
+            --bonsana-gray-light: #f8f9fa;
+            --bonsana-gray: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --dark-text: #212529;
+            --light-text: #6c757d;
+            --border-color: #dee2e6;
+            
+            /* Sombras más suaves y modernas */
+            --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            
+            /* Bordes más modernos */
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --border-radius-lg: 16px;
+            
+            /* Transiciones suaves */
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Global Styles - Tipografía mejorada */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bonsana-gray-light) 0%, #e9ecef 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-text);
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--bonsana-red-dark);
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        /* Navigation - Modernizada */
+        .navbar {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%) !important;
+            box-shadow: var(--shadow-md);
+            border-bottom: none;
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-shadow: none;
+            color: var(--bonsana-white) !important;
+        }
+
+        .navbar-text {
+            font-weight: 500;
+            color: var(--bonsana-white) !important;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            color: var(--bonsana-white) !important;
+        }
+
+        /* Cards - Diseño más limpio */
+        .card {
+            background: var(--bonsana-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            background: var(--bonsana-white);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            padding: 1.5rem;
+            border-top-left-radius: var(--border-radius);
+            border-top-right-radius: var(--border-radius);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .card-title {
+            color: var(--dark-text);
+            font-weight: 600;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title i {
+            color: var(--bonsana-red);
+            font-size: 1.1em;
+        }
+
+        /* Buttons - Mejorados */
+        .btn {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            transition: var(--transition);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            color: var(--bonsana-white);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--bonsana-red-dark) 0%, #8f1e2b 100%);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-primary {
+            border: 1px solid var(--bonsana-red);
+            color: var(--bonsana-red);
+            background: transparent;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--bonsana-red);
+            color: var(--bonsana-white);
+            border-color: var(--bonsana-red);
+        }
+
+        .btn-outline-secondary {
+            border: 1px solid var(--border-color);
+            color: var(--light-text);
+            background: transparent;
+        }
+
+        .btn-outline-secondary:hover {
+            background: var(--bonsana-gray-light);
+            color: var(--dark-text);
+            border-color: var(--bonsana-gray);
+        }
+
+        .btn-outline-info {
+            border: 1px solid var(--info-color);
+            color: var(--info-color);
+        }
+
+        .btn-outline-info:hover {
+            background: var(--info-color);
+            color: var(--bonsana-white);
+        }
+
+        .btn-outline-warning {
+            border: 1px solid var(--warning-color);
+            color: #b45309;
+        }
+
+        .btn-outline-warning:hover {
+            background: var(--warning-color);
+            color: var(--bonsana-white);
+        }
+
+        .btn-outline-success {
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+
+        .btn-outline-success:hover {
+            background: var(--success-color);
+            color: var(--bonsana-white);
+        }
+
+        /* Form Controls */
+        .form-select,
+        .form-control {
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+            padding: 0.75rem 1rem;
+            transition: var(--transition);
+            background: var(--bonsana-white);
+            font-size: 0.95rem;
+        }
+
+        .form-select:focus,
+        .form-control:focus {
+            border-color: var(--bonsana-red);
+            box-shadow: 0 0 0 3px rgb(220 53 69 / 0.1);
+            outline: none;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--dark-text);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Model Info - Estilo Bonsana */
+        .model-info {
+            background: linear-gradient(135deg, var(--bonsana-red-light) 0%, rgba(248, 215, 218, 0.7) 100%);
+            border: 1px solid var(--bonsana-red);
+            border-radius: var(--border-radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .model-info .fw-bold {
+            color: var(--bonsana-red-dark);
+        }
+
+        /* Badges */
+        .badge {
+            font-weight: 500;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius-sm);
+            font-size: 0.8rem;
+        }
+
+        .bg-success {
+            background: var(--success-color) !important;
+        }
+
+        .bg-danger {
+            background: var(--bonsana-red) !important;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--border-radius);
+            z-index: 1000;
+        }
+
+        .loading-content {
+            text-align: center;
+            max-width: 300px;
+        }
+
+        .ai-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--bonsana-red-light);
+            border-top: 3px solid var(--bonsana-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Progress Bar */
+        .progress {
+            background: var(--bonsana-gray-light);
+            border-radius: var(--border-radius-sm);
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            transition: width 0.3s ease;
+        }
+
+        /* Analysis Container */
         .analysis-container {
             max-height: 600px;
             overflow-y: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 12px;
+            border-radius: var(--border-radius-sm);
+            background: var(--bonsana-white);
             padding: 1.5rem;
-            background: white;
         }
-        
+
         .analysis-content {
-            line-height: 1.8;
+            line-height: 1.7;
             font-size: 0.95rem;
+            color: var(--dark-text);
         }
-        
+
         .analysis-content h1,
         .analysis-content h2,
         .analysis-content h3,
@@ -38,132 +343,265 @@
             color: var(--bonsana-red-dark);
             margin-top: 2rem;
             margin-bottom: 1rem;
-            border-bottom: 2px solid var(--bonsana-red-light);
+            font-weight: 600;
+        }
+
+        .analysis-content h1 {
+            border-bottom: 2px solid var(--bonsana-red);
             padding-bottom: 0.5rem;
         }
-        
+
+        .analysis-content h2 {
+            border-bottom: 1px solid var(--bonsana-red-light);
+            padding-bottom: 0.5rem;
+        }
+
         .analysis-content ul,
         .analysis-content ol {
-            padding-left: 2rem;
+            padding-left: 1.5rem;
         }
-        
+
         .analysis-content li {
             margin-bottom: 0.5rem;
         }
-        
+
         .analysis-content blockquote {
             border-left: 4px solid var(--bonsana-red);
             background: var(--bonsana-red-light);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+            font-style: italic;
         }
-        
+
         .analysis-content table {
-            margin: 1rem 0;
+            margin: 1.5rem 0;
+            border-radius: var(--border-radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
         }
-        
+
+        .analysis-content th {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            color: var(--bonsana-white);
+            border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+            padding: 12px 15px;
+        }
+
+        .analysis-content td {
+            border-color: var(--border-color);
+            vertical-align: middle;
+            padding: 10px 15px;
+        }
+
         .analysis-content code {
             background: var(--bonsana-gray-light);
             color: var(--bonsana-red-dark);
             padding: 0.2rem 0.4rem;
             border-radius: 4px;
             font-size: 0.9em;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
         }
-        
+
         .analysis-content pre {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
+            background: var(--bonsana-gray-light);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
             padding: 1rem;
             overflow-x: auto;
         }
-        
-        .analysis-stats {
-            background: linear-gradient(135deg, var(--bonsana-gray-light) 0%, #e9ecef 100%);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .analysis-type-badge {
-            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
-            color: white;
-            font-weight: 600;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-        }
-        
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            z-index: 1000;
-        }
-        
-        .loading-content {
-            text-align: center;
-        }
-        
-        .ai-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--bonsana-red-light);
-            border-top: 4px solid var(--bonsana-red);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
+
+        /* Analysis Actions */
         .analysis-actions {
             position: sticky;
             top: 0;
-            background: white;
+            background: var(--bonsana-white);
             z-index: 100;
             padding: 1rem 0;
-            border-bottom: 2px solid var(--bonsana-red-light);
+            border-bottom: 1px solid var(--border-color);
             margin-bottom: 1rem;
         }
-        
-        .model-info {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border: 1px solid #2196f3;
-            border-radius: 8px;
-            padding: 0.75rem;
+
+        .analysis-type-badge {
+            background: linear-gradient(135deg, var(--bonsana-red) 0%, var(--bonsana-red-dark) 100%);
+            color: var(--bonsana-white);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius-sm);
+            font-size: 0.9rem;
+        }
+
+        /* Stats - Mejoradas */
+        .analysis-stats {
+            background: linear-gradient(135deg, var(--bonsana-gray-light) 0%, #e9ecef 100%);
+            border-radius: var(--border-radius-sm);
+            padding: 1.5rem;
             margin-bottom: 1rem;
         }
-        
+
+        .stats-item {
+            text-align: center;
+        }
+
+        .stats-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--bonsana-red);
+            display: block;
+        }
+
+        .stats-label {
+            font-size: 0.85rem;
+            color: var(--light-text);
+            font-weight: 500;
+        }
+
+        /* History */
         .analysis-history-item {
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
             padding: 1rem;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
+            margin-bottom: 0.75rem;
+            transition: var(--transition);
+            cursor: pointer;
+            background: var(--bonsana-white);
         }
-        
+
         .analysis-history-item:hover {
             border-color: var(--bonsana-red);
-            transform: translateX(5px);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
         }
-        
+
+        /* Export Options */
         .export-options {
             background: var(--bonsana-gray-light);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
+            border-radius: var(--border-radius-sm);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Welcome State */
+        .welcome-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--light-text);
+        }
+
+        .welcome-state i {
+            font-size: 4rem;
+            color: var(--bonsana-red);
+            opacity: 0.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .welcome-state h4 {
+            color: var(--dark-text);
+            margin-bottom: 1rem;
+        }
+
+        .welcome-state .lead {
+            color: var(--light-text);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Alerts */
+        .alert-danger {
+            background: var(--bonsana-red-light);
+            border: 1px solid var(--bonsana-red);
+            color: var(--bonsana-red-dark);
+            border-radius: var(--border-radius-sm);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .card-header {
+                padding: 1rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.1rem;
+            }
+
+            .analysis-actions {
+                padding: 0.75rem 0;
+            }
+
+            .analysis-actions .d-flex {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: stretch !important;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Toast Container */
+        .toast-container {
+            z-index: 9999;
+        }
+
+        .toast {
+            border-radius: var(--border-radius-sm);
+            border: none;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Quick Analysis Buttons */
+        .quick-analysis {
+            transition: var(--transition);
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+        }
+
+        .quick-analysis:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Estado vacío mejorado */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--light-text);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--bonsana-red);
+            opacity: 0.3;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -193,7 +631,7 @@
         <!-- Header Section -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card">
+                <div class="card fade-in">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="card-title mb-0">
@@ -214,7 +652,7 @@
                         <!-- Model Info -->
                         <div class="model-info" id="modelInfo">
                             <div class="d-flex align-items-center">
-                                <i class="bi bi-cpu me-2 text-primary"></i>
+                                <i class="bi bi-cpu me-2 text-danger"></i>
                                 <span class="fw-bold">Modelo:</span>
                                 <span class="ms-2" id="modelName">Cargando...</span>
                                 <span class="badge bg-success ms-auto" id="connectionStatus">
@@ -278,7 +716,7 @@
         <div class="row">
             <!-- Analysis Results -->
             <div class="col-lg-8">
-                <div class="card">
+                <div class="card fade-in">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
                             <i class="bi bi-file-text me-2"></i>
@@ -303,8 +741,8 @@
                         
                         <!-- Analysis Content -->
                         <div id="analysisResults">
-                            <div class="text-center text-muted py-5">
-                                <i class="bi bi-robot display-1 text-muted mb-3"></i>
+                            <div class="welcome-state">
+                                <i class="bi bi-robot"></i>
                                 <h4>Bienvenido al Análisis de IA</h4>
                                 <p class="lead">Selecciona un tipo de análisis y presiona "Iniciar Análisis" para comenzar.</p>
                                 <p>El sistema utilizará inteligencia artificial para analizar tus datos de tickets y proporcionar insights estratégicos.</p>
@@ -330,7 +768,7 @@
                             </button>
                         </div>
                         <div class="col-md-4">
-                            <button class="btn btn-outline-info w-100 btn-sm" id="saveAnalysisBtn">
+                            <button class="btn btn-outline-secondary w-100 btn-sm" id="saveAnalysisBtn">
                                 <i class="bi bi-save me-1"></i>Guardar Análisis
                             </button>
                         </div>
@@ -341,7 +779,7 @@
             <!-- Sidebar -->
             <div class="col-lg-4">
                 <!-- Analysis Stats -->
-                <div class="card mb-3">
+                <div class="card mb-3 fade-in">
                     <div class="card-header">
                         <h6 class="card-title mb-0">
                             <i class="bi bi-bar-chart me-2"></i>Estadísticas del Análisis
@@ -349,16 +787,16 @@
                     </div>
                     <div class="card-body">
                         <div id="analysisStats">
-                            <div class="text-center text-muted py-3">
-                                <i class="bi bi-graph-up fs-1 text-muted mb-2"></i>
-                                <p class="mb-0">No hay análisis activo</p>
+                            <div class="empty-state">
+                                <i class="bi bi-graph-up"></i>
+                                <p>No hay análisis activo</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Analysis History -->
-                <div class="card">
+                <div class="card fade-in">
                     <div class="card-header">
                         <h6 class="card-title mb-0">
                             <i class="bi bi-clock-history me-2"></i>Historial de Análisis
@@ -366,9 +804,9 @@
                     </div>
                     <div class="card-body">
                         <div id="analysisHistory">
-                            <div class="text-center text-muted py-3">
-                                <i class="bi bi-archive fs-1 text-muted mb-2"></i>
-                                <p class="mb-0">No hay análisis previos</p>
+                            <div class="empty-state">
+                                <i class="bi bi-archive"></i>
+                                <p>No hay análisis previos</p>
                             </div>
                         </div>
                     </div>
@@ -626,7 +1064,7 @@
                     <div class="row g-3">
                         <div class="col-6">
                             <div class="text-center">
-                                <div class="h6 text-primary mb-0">${data.processing_time?.toFixed(2) || 'N/A'}s</div>
+                                <div class="h6 text-danger mb-0">${data.processing_time?.toFixed(2) || 'N/A'}s</div>
                                 <small class="text-muted">Tiempo de Procesamiento</small>
                             </div>
                         </div>
@@ -678,9 +1116,9 @@
             
             if (analysisHistory.length === 0) {
                 container.innerHTML = `
-                    <div class="text-center text-muted py-3">
-                        <i class="bi bi-archive fs-1 text-muted mb-2"></i>
-                        <p class="mb-0">No hay análisis previos</p>
+                    <div class="empty-state">
+                        <i class="bi bi-archive"></i>
+                        <p>No hay análisis previos</p>
                     </div>
                 `;
                 return;

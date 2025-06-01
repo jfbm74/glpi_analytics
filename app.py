@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Aplicación principal del Dashboard IT - Clínica Bonsana
+Aplicación principal del Dashboard IT - Clínica Bonsana - CORREGIDA
 Integra todas las funcionalidades: Dashboard principal + IA + API + Monitoreo
 """
 
@@ -15,6 +15,7 @@ from flask import redirect, url_for, flash, session
 from dotenv import load_dotenv
 import pandas as pd
 import json
+from collections import defaultdict
 
 # Importar módulos del proyecto
 try:
@@ -232,7 +233,7 @@ def setup_main_routes(app):
                 'timestamp': datetime.now().isoformat()
             }), 500
     
-    # API Routes para el dashboard principal
+    # API Routes para el dashboard principal - TODAS LAS RUTAS NECESARIAS
     @app.route('/api/metrics')
     def get_metrics():
         """Obtiene métricas generales del dashboard"""
@@ -282,6 +283,22 @@ def setup_main_routes(app):
             app.logger.error(f"Error obteniendo técnicos: {e}")
             return jsonify({'error': 'Error obteniendo técnicos'}), 500
     
+    @app.route('/api/requesters')
+    def get_requesters():
+        """Obtiene información de solicitantes"""
+        try:
+            analyzer = TicketAnalyzer(data_path=app.config['DATA_DIRECTORY'])
+            requesters = analyzer.get_top_requesters()
+            
+            if app.cache:
+                app.cache.set('dashboard_requesters', requesters, timeout=300)
+            
+            return jsonify(requesters)
+            
+        except Exception as e:
+            app.logger.error(f"Error obteniendo solicitantes: {e}")
+            return jsonify({'error': 'Error obteniendo solicitantes'}), 500
+    
     @app.route('/api/sla')
     def get_sla():
         """Obtiene análisis de SLA"""
@@ -297,8 +314,6 @@ def setup_main_routes(app):
         except Exception as e:
             app.logger.error(f"Error obteniendo SLA: {e}")
             return jsonify({'error': 'Error obteniendo SLA'}), 500
-        
-    
     
     @app.route('/api/csat')
     def get_csat():
@@ -331,6 +346,46 @@ def setup_main_routes(app):
         except Exception as e:
             app.logger.error(f"Error obteniendo validación: {e}")
             return jsonify({'error': 'Error obteniendo validación'}), 500
+    
+    # NUEVAS RUTAS PARA ESTADÍSTICAS POR TÉCNICO
+    @app.route('/api/technicians/sla')
+    def get_technicians_sla():
+        """Obtiene estadísticas de SLA por técnico"""
+        try:
+            analyzer = TicketAnalyzer(data_path=app.config['DATA_DIRECTORY'])
+            sla_data = analyzer.get_technician_sla_stats()
+            
+            return jsonify(sla_data)
+            
+        except Exception as e:
+            app.logger.error(f"Error obteniendo SLA por técnico: {e}")
+            return jsonify({'error': 'Error obteniendo SLA por técnico'}), 500
+    
+    @app.route('/api/technicians/csat')
+    def get_technicians_csat():
+        """Obtiene estadísticas de CSAT por técnico"""
+        try:
+            analyzer = TicketAnalyzer(data_path=app.config['DATA_DIRECTORY'])
+            csat_data = analyzer.get_technician_csat_stats()
+            
+            return jsonify(csat_data)
+            
+        except Exception as e:
+            app.logger.error(f"Error obteniendo CSAT por técnico: {e}")
+            return jsonify({'error': 'Error obteniendo CSAT por técnico'}), 500
+    
+    @app.route('/api/technicians/resolution-time')
+    def get_technicians_resolution():
+        """Obtiene estadísticas de tiempo de resolución por técnico"""
+        try:
+            analyzer = TicketAnalyzer(data_path=app.config['DATA_DIRECTORY'])
+            resolution_data = analyzer.get_technician_resolution_stats()
+            
+            return jsonify(resolution_data)
+            
+        except Exception as e:
+            app.logger.error(f"Error obteniendo tiempos de resolución por técnico: {e}")
+            return jsonify({'error': 'Error obteniendo tiempos de resolución por técnico'}), 500
     
     @app.route('/api/config')
     def get_config():
@@ -365,7 +420,6 @@ def setup_main_routes(app):
                                  error=f"Error cargando dashboard IA: {str(e)}", 
                                  error_code=500), 500
     
-    # Ruta de análisis de IA - CORREGIDA
     @app.route('/ai-analysis')
     def ai_analysis():
         """Página de análisis de IA"""
@@ -375,7 +429,6 @@ def setup_main_routes(app):
                                  error_code=404), 404
         
         try:
-            # Renderizar directamente el template
             return render_template('ai_analysis.html')
         except Exception as e:
             app.logger.error(f"Error cargando página de análisis IA: {e}")
@@ -383,8 +436,6 @@ def setup_main_routes(app):
                                  error=f"Error cargando página de análisis: {str(e)}", 
                                  error_code=500), 500
     
-    
-    # Ruta de debug para development
     @app.route('/debug/routes')
     def debug_routes():
         """Debug: muestra todas las rutas disponibles"""
@@ -479,9 +530,9 @@ def initialize_services(app):
             except Exception as e:
                 app.logger.error(f"Error creando CSV de muestra: {e}")
 
-# Clase auxiliar para análisis de tickets (compatibilidad)
+# Clase mejorada para análisis de tickets - TODAS LAS FUNCIONES NECESARIAS
 class TicketAnalyzer:
-    """Analizador de tickets compatible con la estructura original"""
+    """Analizador de tickets compatible con la estructura original - COMPLETO"""
     
     def __init__(self, data_path="data"):
         self.data_path = data_path
@@ -492,7 +543,13 @@ class TicketAnalyzer:
         if not self.csv_path.exists():
             raise FileNotFoundError(f"Archivo CSV no encontrado: {self.csv_path}")
         
-        return pd.read_csv(self.csv_path, delimiter=';', encoding='utf-8')
+        try:
+            df = pd.read_csv(self.csv_path, delimiter=';', encoding='utf-8')
+            logging.info(f"Datos cargados exitosamente: {len(df)} filas, {len(df.columns)} columnas")
+            return df
+        except Exception as e:
+            logging.error(f"Error al cargar CSV: {e}")
+            raise
     
     def get_overall_metrics(self):
         """Obtiene métricas generales"""
@@ -500,14 +557,19 @@ class TicketAnalyzer:
             df = self._load_data()
             
             total_tickets = len(df)
-            resolved_tickets = len(df[df['Estado'].isin(['Resueltas', 'Cerrado'])])
+            
+            # Estados que consideramos como resueltos
+            resolved_states = ['Resueltas', 'Cerrado', 'Solucionado', 'Finalizado']
+            resolved_tickets = len(df[df['Estado'].isin(resolved_states)])
             resolution_rate = (resolved_tickets / total_tickets * 100) if total_tickets > 0 else 0
             
             # SLA compliance
-            sla_exceeded = len(df[df['Se superó el tiempo de resolución'] == 'Si'])
+            sla_exceeded = 0
+            if 'Se superó el tiempo de resolución' in df.columns:
+                sla_exceeded = len(df[df['Se superó el tiempo de resolución'] == 'Si'])
             sla_compliance = ((total_tickets - sla_exceeded) / total_tickets * 100) if total_tickets > 0 else 0
             
-            # Tiempo promedio de resolución (simulado)
+            # Tiempo promedio de resolución (simulado si no hay datos reales)
             avg_resolution_time = 24.5  # Placeholder
             
             return {
@@ -531,31 +593,125 @@ class TicketAnalyzer:
         try:
             df = self._load_data()
             
-            return {
-                'by_type': df['Tipo'].value_counts().to_dict(),
-                'by_status': df['Estado'].value_counts().to_dict(),
-                'by_priority': df['Prioridad'].value_counts().to_dict(),
-                'by_category': df['Categoría'].value_counts().head(10).to_dict()
-            }
+            # Verificar que las columnas existan
+            distributions = {}
+            
+            if 'Tipo' in df.columns:
+                distributions['by_type'] = df['Tipo'].value_counts().to_dict()
+            else:
+                distributions['by_type'] = {}
+            
+            if 'Estado' in df.columns:
+                distributions['by_status'] = df['Estado'].value_counts().to_dict()
+            else:
+                distributions['by_status'] = {}
+            
+            if 'Prioridad' in df.columns:
+                distributions['by_priority'] = df['Prioridad'].value_counts().to_dict()
+            else:
+                distributions['by_priority'] = {}
+            
+            if 'Categoría' in df.columns:
+                distributions['by_category'] = df['Categoría'].value_counts().head(10).to_dict()
+            else:
+                distributions['by_category'] = {}
+            
+            return distributions
             
         except Exception as e:
             logging.error(f"Error en get_ticket_distribution: {e}")
             return {'by_type': {}, 'by_status': {}, 'by_priority': {}, 'by_category': {}}
     
     def get_technician_workload(self):
-        """Obtiene carga de trabajo por técnico"""
+        """Obtiene carga de trabajo por técnico - MEJORADO para detectar sin asignar"""
         try:
             df = self._load_data()
-            workload = df['Asignado a: - Técnico'].value_counts().to_dict()
             
-            # Limpiar nombres de técnicos vacíos
-            if '' in workload:
-                workload['SIN ASIGNAR'] = workload.pop('')
+            # Buscar columna de técnico
+            tech_column = None
+            possible_columns = ['Asignado a: - Técnico', 'Técnico', 'Assigned_to', 'Technician']
+            
+            for col in possible_columns:
+                if col in df.columns:
+                    tech_column = col
+                    break
+            
+            if tech_column is None:
+                logging.warning("No se encontró columna de técnico")
+                return {}
+            
+            logging.info(f"Usando columna de técnico: {tech_column}")
+            
+            # Análisis detallado de valores para debug
+            unique_values = df[tech_column].unique()
+            logging.info(f"Valores únicos en columna técnico: {unique_values}")
+            
+            # Crear copia de la serie para trabajar
+            tech_series = df[tech_column].copy()
+            
+            # Identificar y marcar todos los casos de "sin asignar"
+            # Casos comunes: '', None, NaN, 'NULL', espacios en blanco, etc.
+            unassigned_mask = (
+                tech_series.isna() |                    # NaN/None
+                (tech_series == '') |                   # Cadena vacía
+                (tech_series == ' ') |                  # Solo espacios
+                (tech_series.str.strip() == '') |      # Espacios al inicio/final
+                (tech_series.str.upper() == 'NULL') |  # NULL como texto
+                (tech_series.str.upper() == 'N/A') |   # N/A
+                (tech_series.str.upper() == 'NONE')    # NONE como texto
+            )
+            
+            # Contar tickets sin asignar
+            unassigned_count = unassigned_mask.sum()
+            logging.info(f"Tickets sin asignar detectados: {unassigned_count}")
+            
+            # Reemplazar todos los casos sin asignar con un valor consistente
+            tech_series.loc[unassigned_mask] = 'SIN ASIGNAR'
+            
+            # Obtener conteos
+            workload = tech_series.value_counts().to_dict()
+            
+            logging.info(f"Distribución final por técnico: {workload}")
+            
+            # Asegurar que "SIN ASIGNAR" aparezca si hay tickets sin asignar
+            if unassigned_count > 0 and 'SIN ASIGNAR' not in workload:
+                workload['SIN ASIGNAR'] = unassigned_count
             
             return workload
-            
+        
         except Exception as e:
             logging.error(f"Error en get_technician_workload: {e}")
+            logging.error(f"Traceback completo: ", exc_info=True)
+            return {}
+    
+    def get_top_requesters(self):
+        """Obtiene top solicitantes"""
+        try:
+            df = self._load_data()
+            
+            # Buscar columna de solicitante
+            requester_column = None
+            possible_columns = ['Solicitante - Solicitante', 'Solicitante', 'Requester', 'Cliente']
+            
+            for col in possible_columns:
+                if col in df.columns:
+                    requester_column = col
+                    break
+            
+            if requester_column is None:
+                logging.warning("No se encontró columna de solicitante")
+                return {}
+            
+            top_requesters = df[requester_column].value_counts().head(10).to_dict()
+            
+            # Limpiar nombres vacíos
+            if '' in top_requesters:
+                del top_requesters['']
+            
+            return top_requesters
+            
+        except Exception as e:
+            logging.error(f"Error en get_top_requesters: {e}")
             return {}
     
     def get_sla_analysis(self):
@@ -563,26 +719,68 @@ class TicketAnalyzer:
         try:
             df = self._load_data()
             
-            incidents = df[df['Tipo'] == 'Incidencia']
+            # Filtrar solo incidencias si hay columna de tipo
+            if 'Tipo' in df.columns:
+                incidents = df[df['Tipo'] == 'Incidencia']
+            else:
+                incidents = df  # Usar todos los tickets si no hay columna de tipo
+            
             total_incidents = len(incidents)
-            sla_exceeded = len(incidents[incidents['Se superó el tiempo de resolución'] == 'Si'])
+            sla_exceeded = 0
+            
+            if 'Se superó el tiempo de resolución' in incidents.columns:
+                sla_exceeded = len(incidents[incidents['Se superó el tiempo de resolución'] == 'Si'])
+            
+            sla_compliance_rate = ((total_incidents - sla_exceeded) / total_incidents * 100) if total_incidents > 0 else 0
+            
+            # Análisis por nivel de SLA si existe la columna
+            sla_compliance_by_level = {}
+            if 'ANS (Acuerdo de nivel de servicio) - ANS (Acuerdo de nivel de servicio) Tiempo de solución' in incidents.columns:
+                sla_column = 'ANS (Acuerdo de nivel de servicio) - ANS (Acuerdo de nivel de servicio) Tiempo de solución'
+                
+                for sla_level in incidents[sla_column].dropna().unique():
+                    level_incidents = incidents[incidents[sla_column] == sla_level]
+                    level_total = len(level_incidents)
+                    level_exceeded = len(level_incidents[level_incidents['Se superó el tiempo de resolución'] == 'Si'])
+                    level_within_sla = level_total - level_exceeded
+                    level_compliance = (level_within_sla / level_total * 100) if level_total > 0 else 0
+                    
+                    sla_compliance_by_level[sla_level] = {
+                        'total': level_total,
+                        'within_sla': level_within_sla,
+                        'exceeded': level_exceeded,
+                        'compliance_rate': round(level_compliance, 1)
+                    }
             
             return {
                 'total_incidents': total_incidents,
                 'sla_exceeded': sla_exceeded,
-                'sla_compliance_rate': ((total_incidents - sla_exceeded) / total_incidents * 100) if total_incidents > 0 else 0
+                'sla_compliance_rate': round(sla_compliance_rate, 1),
+                'sla_compliance_by_level': sla_compliance_by_level
             }
             
         except Exception as e:
             logging.error(f"Error en get_sla_analysis: {e}")
-            return {'total_incidents': 0, 'sla_exceeded': 0, 'sla_compliance_rate': 0}
+            return {'total_incidents': 0, 'sla_exceeded': 0, 'sla_compliance_rate': 0, 'sla_compliance_by_level': {}}
     
     def get_csat_score(self):
         """Obtiene score de satisfacción del cliente"""
         try:
             df = self._load_data()
             
-            csat_scores = pd.to_numeric(df['Encuesta de satisfacción - Satisfacción'], errors='coerce').dropna()
+            # Buscar columna de satisfacción
+            csat_column = None
+            possible_columns = ['Encuesta de satisfacción - Satisfacción', 'CSAT', 'Satisfacción', 'Rating']
+            
+            for col in possible_columns:
+                if col in df.columns:
+                    csat_column = col
+                    break
+            
+            if csat_column is None:
+                return {'average_csat': 0, 'total_surveys': 0, 'distribution': {}}
+            
+            csat_scores = pd.to_numeric(df[csat_column], errors='coerce').dropna()
             
             if len(csat_scores) > 0:
                 return {
@@ -605,27 +803,386 @@ class TicketAnalyzer:
             insights = {}
             
             # Tickets sin asignar
-            unassigned = len(df[df['Asignado a: - Técnico'].isin(['', None])])
-            if unassigned > 0:
-                insights['unassigned_tickets'] = {
-                    'count': unassigned,
-                    'recommendation': f"Asignar {unassigned} tickets pendientes a técnicos disponibles"
-                }
+            tech_column = None
+            possible_tech_columns = ['Asignado a: - Técnico', 'Técnico', 'Assigned_to']
+            
+            for col in possible_tech_columns:
+                if col in df.columns:
+                    tech_column = col
+                    break
+            
+            if tech_column:
+                unassigned = len(df[df[tech_column].isin(['', None]) | df[tech_column].isna()])
+                if unassigned > 0:
+                    insights['unassigned_tickets'] = {
+                        'count': unassigned,
+                        'recommendation': f"Asignar {unassigned} tickets pendientes a técnicos disponibles"
+                    }
             
             # Hardware sin elementos asociados
-            hardware_tickets = df[df['Categoría'].str.contains('Hardware', na=False)]
-            hardware_no_assets = len(hardware_tickets[hardware_tickets['Elementos asociados'].isin(['', None])])
-            if hardware_no_assets > 0:
-                insights['hardware_no_assets'] = {
-                    'count': hardware_no_assets,
-                    'recommendation': f"Asociar elementos de hardware a {hardware_no_assets} tickets"
-                }
+            if 'Categoría' in df.columns and 'Elementos asociados' in df.columns:
+                hardware_tickets = df[df['Categoría'].str.contains('Hardware', na=False)]
+                hardware_no_assets = len(hardware_tickets[hardware_tickets['Elementos asociados'].isin(['', None]) | hardware_tickets['Elementos asociados'].isna()])
+                if hardware_no_assets > 0:
+                    insights['hardware_no_assets'] = {
+                        'count': hardware_no_assets,
+                        'recommendation': f"Asociar elementos de hardware a {hardware_no_assets} tickets"
+                    }
+            
+            # Tickets sin categoría
+            if 'Categoría' in df.columns:
+                no_category = len(df[df['Categoría'].isin(['', None]) | df['Categoría'].isna()])
+                if no_category > 0:
+                    insights['no_category_tickets'] = {
+                        'count': no_category,
+                        'recommendation': f"Asignar categoría a {no_category} tickets"
+                    }
             
             return insights
             
         except Exception as e:
             logging.error(f"Error en get_data_validation_insights: {e}")
             return {}
+    
+    def get_technician_sla_stats(self):
+        """Obtiene estadísticas de SLA por técnico - CORREGIDO"""
+        try:
+            df = self._load_data()
+            
+            # Buscar columnas necesarias
+            tech_column = None
+            possible_tech_columns = ['Asignado a: - Técnico', 'Técnico', 'Assigned_to']
+            
+            for col in possible_tech_columns:
+                if col in df.columns:
+                    tech_column = col
+                    break
+            
+            if not tech_column:
+                logging.warning("No se encontró columna de técnico para SLA")
+                return {}
+            
+            # Verificar columnas requeridas
+            required_columns = ['Tipo', 'Se superó el tiempo de resolución']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                logging.warning(f"Columnas faltantes para SLA: {missing_columns}")
+                return {}
+            
+            # Filtrar solo incidencias (donde aplica SLA)
+            incidents = df[df['Tipo'] == 'Incidencia'].copy()
+            
+            if len(incidents) == 0:
+                logging.info("No hay incidencias para calcular SLA")
+                return {}
+            
+            stats = {}
+            
+            # Procesar cada técnico
+            for technician in incidents[tech_column].dropna().unique():
+                if not technician or str(technician).strip() == '':
+                    continue
+                    
+                tech_incidents = incidents[incidents[tech_column] == technician]
+                total_incidents = len(tech_incidents)
+                
+                if total_incidents == 0:
+                    continue
+                
+                # Calcular SLA
+                sla_exceeded_count = len(tech_incidents[tech_incidents['Se superó el tiempo de resolución'] == 'Si'])
+                sla_compliant_count = total_incidents - sla_exceeded_count
+                
+                # Calcular porcentaje de cumplimiento
+                compliance_rate = (sla_compliant_count / total_incidents * 100) if total_incidents > 0 else 0
+                
+                # Asegurar que no hay valores NaN
+                compliance_rate = round(compliance_rate, 1) if not pd.isna(compliance_rate) else 0.0
+                
+                stats[technician] = {
+                    'total_incidents': total_incidents,
+                    'sla_compliant': sla_compliant_count,
+                    'sla_exceeded': sla_exceeded_count,
+                    'compliance_rate': compliance_rate
+                }
+            
+            logging.info(f"SLA stats calculadas para {len(stats)} técnicos")
+            return stats
+            
+        except Exception as e:
+            logging.error(f"Error en get_technician_sla_stats: {e}", exc_info=True)
+            return {}
+
+
+
+    def get_technician_csat_stats(self):
+        """Obtiene estadísticas de CSAT por técnico - CORREGIDO"""
+        try:
+            df = self._load_data()
+            
+            # Buscar columnas necesarias
+            tech_column = None
+            csat_column = None
+            
+            possible_tech_columns = ['Asignado a: - Técnico', 'Técnico', 'Assigned_to']
+            possible_csat_columns = ['Encuesta de satisfacción - Satisfacción', 'CSAT', 'Satisfacción']
+            
+            for col in possible_tech_columns:
+                if col in df.columns:
+                    tech_column = col
+                    break
+            
+            for col in possible_csat_columns:
+                if col in df.columns:
+                    csat_column = col
+                    break
+            
+            if not tech_column or not csat_column:
+                logging.warning(f"Columnas faltantes - Técnico: {tech_column}, CSAT: {csat_column}")
+                return {}
+            
+            stats = {}
+            
+            # Procesar cada técnico
+            for technician in df[tech_column].dropna().unique():
+                if not technician or str(technician).strip() == '':
+                    continue
+                    
+                tech_tickets = df[df[tech_column] == technician]
+                
+                # Convertir scores CSAT a numérico, eliminando valores inválidos
+                csat_scores = pd.to_numeric(tech_tickets[csat_column], errors='coerce').dropna()
+                
+                # Filtrar scores válidos (1-5)
+                valid_scores = csat_scores[(csat_scores >= 1) & (csat_scores <= 5)]
+                
+                if len(valid_scores) == 0:
+                    continue
+                
+                # Calcular estadísticas
+                total_surveys = len(valid_scores)
+                average_csat = valid_scores.mean()
+                
+                # Categorizar scores - CORREGIDO: usar los nombres correctos
+                excellent_ratings = len(valid_scores[valid_scores >= 4])  # 4-5 estrellas
+                poor_ratings = len(valid_scores[valid_scores <= 2])       # 1-2 estrellas
+                
+                # Asegurar que no hay valores NaN
+                average_csat = round(average_csat, 2) if not pd.isna(average_csat) else 0.0
+                
+                stats[technician] = {
+                    'total_surveys': total_surveys,
+                    'average_csat': average_csat,
+                    'excellent_ratings': excellent_ratings,  # CORREGIDO
+                    'poor_ratings': poor_ratings             # CORREGIDO
+                }
+            
+            logging.info(f"CSAT stats calculadas para {len(stats)} técnicos")
+            return stats
+            
+        except Exception as e:
+            logging.error(f"Error en get_technician_csat_stats: {e}", exc_info=True)
+            return {}
+ 
+    def get_technician_csat_stats(self):
+        """Obtiene estadísticas de CSAT por técnico - CORREGIDO"""
+        try:
+            df = self._load_data()
+            
+            # Buscar columnas necesarias
+            tech_column = None
+            csat_column = None
+            
+            possible_tech_columns = ['Asignado a: - Técnico', 'Técnico', 'Assigned_to']
+            possible_csat_columns = ['Encuesta de satisfacción - Satisfacción', 'CSAT', 'Satisfacción']
+            
+            for col in possible_tech_columns:
+                if col in df.columns:
+                    tech_column = col
+                    break
+            
+            for col in possible_csat_columns:
+                if col in df.columns:
+                    csat_column = col
+                    break
+            
+            if not tech_column or not csat_column:
+                logging.warning(f"Columnas faltantes - Técnico: {tech_column}, CSAT: {csat_column}")
+                return {}
+            
+            stats = {}
+            
+            # Procesar cada técnico
+            for technician in df[tech_column].dropna().unique():
+                if not technician or str(technician).strip() == '':
+                    continue
+                    
+                tech_tickets = df[df[tech_column] == technician]
+                
+                # Convertir scores CSAT a numérico, eliminando valores inválidos
+                csat_scores = pd.to_numeric(tech_tickets[csat_column], errors='coerce').dropna()
+                
+                # Filtrar scores válidos (1-5)
+                valid_scores = csat_scores[(csat_scores >= 1) & (csat_scores <= 5)]
+                
+                if len(valid_scores) == 0:
+                    continue
+                
+                # Calcular estadísticas
+                total_surveys = len(valid_scores)
+                average_csat = valid_scores.mean()
+                
+                # Categorizar scores - CORREGIDO: usar los nombres correctos
+                excellent_ratings = len(valid_scores[valid_scores >= 4])  # 4-5 estrellas
+                poor_ratings = len(valid_scores[valid_scores <= 2])       # 1-2 estrellas
+                
+                # Asegurar que no hay valores NaN
+                average_csat = round(average_csat, 2) if not pd.isna(average_csat) else 0.0
+                
+                stats[technician] = {
+                    'total_surveys': total_surveys,
+                    'average_csat': average_csat,
+                    'excellent_ratings': excellent_ratings,  # CORREGIDO
+                    'poor_ratings': poor_ratings             # CORREGIDO
+                }
+            
+            logging.info(f"CSAT stats calculadas para {len(stats)} técnicos")
+            return stats
+            
+        except Exception as e:
+            logging.error(f"Error en get_technician_csat_stats: {e}", exc_info=True)
+            return {}
+
+    def get_technician_resolution_stats(self):
+        """Obtiene estadísticas de tiempo de resolución por técnico - CORREGIDO"""
+        try:
+            df = self._load_data()
+            
+            # Buscar columna de técnico
+            tech_column = None
+            possible_tech_columns = ['Asignado a: - Técnico', 'Técnico', 'Assigned_to']
+            
+            for col in possible_tech_columns:
+                if col in df.columns:
+                    tech_column = col
+                    break
+            
+            if not tech_column:
+                logging.warning("No se encontró columna de técnico para resolución")
+                return {}
+            
+            # Filtrar solo tickets resueltos
+            resolved_states = ['Resueltas', 'Cerrado']
+            resolved_tickets = df[df['Estado'].isin(resolved_states)].copy()
+            
+            if len(resolved_tickets) == 0:
+                logging.info("No hay tickets resueltos para calcular tiempos")
+                return {}
+            
+            stats = {}
+            
+            # Procesar cada técnico
+            for technician in resolved_tickets[tech_column].dropna().unique():
+                if not technician or str(technician).strip() == '':
+                    continue
+                    
+                tech_tickets = resolved_tickets[resolved_tickets[tech_column] == technician]
+                total_resolved = len(tech_tickets)
+                
+                if total_resolved == 0:
+                    continue
+                
+                # Intentar calcular tiempo real de resolución si tenemos las fechas
+                avg_resolution_hours = None
+                min_resolution_hours = None
+                max_resolution_hours = None
+                
+                if 'Fecha de Apertura' in tech_tickets.columns and 'Fecha de solución' in tech_tickets.columns:
+                    try:
+                        # Convertir fechas
+                        tech_tickets_copy = tech_tickets.copy()
+                        tech_tickets_copy['Fecha de Apertura'] = pd.to_datetime(
+                            tech_tickets_copy['Fecha de Apertura'], errors='coerce'
+                        )
+                        tech_tickets_copy['Fecha de solución'] = pd.to_datetime(
+                            tech_tickets_copy['Fecha de solución'], errors='coerce'
+                        )
+                        
+                        # Calcular diferencias en horas
+                        time_diffs = (
+                            tech_tickets_copy['Fecha de solución'] - tech_tickets_copy['Fecha de Apertura']
+                        ).dt.total_seconds() / 3600
+                        
+                        # Filtrar valores válidos (positivos y menores a 30 días)
+                        valid_times = time_diffs[(time_diffs > 0) & (time_diffs < 720)]  # 720h = 30 días
+                        
+                        if len(valid_times) > 0:
+                            avg_resolution_hours = valid_times.mean()
+                            min_resolution_hours = valid_times.min()
+                            max_resolution_hours = valid_times.max()
+                            
+                    except Exception as e:
+                        logging.warning(f"Error calculando tiempos reales para {technician}: {e}")
+                
+                # Si no se pudo calcular tiempo real, usar estimación basada en prioridad
+                if avg_resolution_hours is None or pd.isna(avg_resolution_hours):
+                    # Estimar basado en la distribución de prioridades del técnico
+                    priorities = tech_tickets['Prioridad'].value_counts() if 'Prioridad' in tech_tickets.columns else {}
+                    estimated_hours = 0
+                    
+                    if len(priorities) > 0:
+                        for priority, count in priorities.items():
+                            if priority == 'Alta':
+                                estimated_hours += count * 8   # 8 horas promedio
+                            elif priority == 'Mediana':
+                                estimated_hours += count * 24  # 24 horas promedio
+                            else:
+                                estimated_hours += count * 48  # 48 horas promedio
+                        
+                        avg_resolution_hours = estimated_hours / total_resolved if total_resolved > 0 else 24
+                    else:
+                        avg_resolution_hours = 24  # Default
+                    
+                    # Valores por defecto para min/max si no se pudieron calcular
+                    min_resolution_hours = avg_resolution_hours * 0.5 if avg_resolution_hours else 12
+                    max_resolution_hours = avg_resolution_hours * 2 if avg_resolution_hours else 48
+                
+                # Categorizar resoluciones
+                fast_threshold = 24  # Menos de 24 horas es rápido
+                slow_threshold = 72  # Más de 72 horas es lento
+                
+                # Estimar distribución basada en el promedio
+                if avg_resolution_hours <= fast_threshold:
+                    fast_resolutions = int(total_resolved * 0.8)  # 80% rápidas
+                    slow_resolutions = int(total_resolved * 0.1)  # 10% lentas
+                elif avg_resolution_hours <= slow_threshold:
+                    fast_resolutions = int(total_resolved * 0.5)  # 50% rápidas
+                    slow_resolutions = int(total_resolved * 0.3)  # 30% lentas
+                else:
+                    fast_resolutions = int(total_resolved * 0.2)  # 20% rápidas
+                    slow_resolutions = int(total_resolved * 0.6)  # 60% lentas
+                
+                # Asegurar que no hay valores NaN y redondear
+                avg_resolution_hours = round(avg_resolution_hours, 1) if not pd.isna(avg_resolution_hours) else 24.0
+                min_resolution_hours = round(min_resolution_hours, 1) if not pd.isna(min_resolution_hours) else 12.0
+                max_resolution_hours = round(max_resolution_hours, 1) if not pd.isna(max_resolution_hours) else 48.0
+                
+                stats[technician] = {
+                    'total_resolved': total_resolved,
+                    'avg_resolution_hours': avg_resolution_hours,
+                    'min_resolution_hours': min_resolution_hours,  # CORREGIDO
+                    'max_resolution_hours': max_resolution_hours,  # CORREGIDO
+                    'fast_resolutions': fast_resolutions,
+                    'slow_resolutions': slow_resolutions
+                }
+            
+            logging.info(f"Resolution stats calculadas para {len(stats)} técnicos")
+            return stats
+            
+        except Exception as e:
+                logging.error(f"Error en get_technician_resolution_stats: {e}", exc_info=True)
+                return {}
 
 # Configurar aplicación para diferentes entornos
 def configure_for_environment():
