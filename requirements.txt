@@ -18,10 +18,16 @@ Werkzeug>=2.3.0
 numpy>=1.24.0
 python-dateutil>=2.8.0
 
+# Monitoreo del sistema (ASEGURAR QUE ESTÉ INCLUIDO)
+psutil>=5.9.0
+
 # Exportación y reportes
 reportlab>=4.0.0
 fpdf2>=2.7.0
 xlsxwriter>=3.1.0
+
+# Servidor de producción
+gunicorn>=20.1.0
 
 # Opcional: desarrollo
 pytest>=7.4.0
