@@ -72,4 +72,4 @@ ENV FLASK_ENV=production \
     WORKERS=4
 
 # Comando por defecto
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "300", "--keepalive", "2", "--max-requests", "1000", "--max-requests-jitter", "50", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "300", "--keep-alive", "2", "--max-requests", "1000", "--max-requests-jitter", "50", "app:app"]
