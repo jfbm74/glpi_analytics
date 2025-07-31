@@ -455,6 +455,110 @@ def setup_main_routes(app):
             'routes': sorted(routes, key=lambda x: x['rule'])
         })
 
+    @app.route('/upload-csv', methods=['POST'])
+    def upload_csv():
+        """Maneja la subida de archivos CSV de GLPI"""
+        try:
+            # Verificar que se envió un archivo
+            if 'csv_file' not in request.files:
+                return jsonify({'success': False, 'error': 'No se seleccionó ningún archivo'}), 400
+            
+            file = request.files['csv_file']
+            
+            # Verificar que el archivo tiene nombre
+            if file.filename == '':
+                return jsonify({'success': False, 'error': 'No se seleccionó ningún archivo'}), 400
+            
+            # Verificar extensión del archivo
+            if not file.filename.lower().endswith('.csv'):
+                return jsonify({'success': False, 'error': 'Solo se permiten archivos CSV'}), 400
+            
+            # Crear directorio de datos si no existe
+            data_dir = Path(app.config['DATA_DIRECTORY'])
+            data_dir.mkdir(exist_ok=True)
+            
+            # Crear backup del archivo actual si existe
+            csv_path = data_dir / 'glpi.csv'
+            if csv_path.exists():
+                backup_dir = data_dir / 'backups'
+                backup_dir.mkdir(exist_ok=True)
+                backup_filename = f"glpi_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                backup_path = backup_dir / backup_filename
+                csv_path.rename(backup_path)
+                app.logger.info(f"Archivo anterior respaldado como: {backup_filename}")
+            
+            # Guardar el nuevo archivo
+            file.save(str(csv_path))
+            app.logger.info(f"Archivo CSV subido exitosamente: {file.filename}")
+            
+            # Validar estructura del CSV
+            try:
+                # Intentar múltiples encodings y configuraciones para manejar archivos GLPI
+                df = None
+                encodings_to_try = ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252']
+                
+                for encoding in encodings_to_try:
+                    try:
+                        df = pd.read_csv(
+                            csv_path, 
+                            delimiter=';', 
+                            encoding=encoding, 
+                            nrows=5,
+                            quotechar='"',  # Manejar comillas
+                            skipinitialspace=True  # Limpiar espacios
+                        )
+                        app.logger.info(f"CSV leído exitosamente con encoding: {encoding}")
+                        break
+                    except Exception as e:
+                        app.logger.debug(f"Falló encoding {encoding}: {e}")
+                        continue
+                
+                if df is None:
+                    raise ValueError("No se pudo leer el archivo CSV con ninguna configuración de encoding")
+                file_info = {
+                    'filename': file.filename,
+                    'size_mb': round(csv_path.stat().st_size / (1024 * 1024), 2),
+                    'columns': len(df.columns),
+                    'sample_rows': len(df),
+                    'upload_time': datetime.now().isoformat()
+                }
+                
+                # Limpiar cache si está disponible
+                if app.cache:
+                    app.cache.clear()
+                    app.logger.info("Cache limpiado después de subir nuevo archivo")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Archivo CSV subido y validado exitosamente',
+                    'file_info': file_info
+                })
+                
+            except Exception as e:
+                # Si hay error en la validación, eliminar el archivo y restaurar backup si existe
+                if csv_path.exists():
+                    csv_path.unlink()
+                
+                # Restaurar backup si existe
+                backup_files = list((data_dir / 'backups').glob('glpi_backup_*.csv'))
+                if backup_files:
+                    latest_backup = max(backup_files, key=lambda x: x.stat().st_mtime)
+                    latest_backup.rename(csv_path)
+                    app.logger.info("Backup restaurado debido a error de validación")
+                
+                app.logger.error(f"Error validando CSV: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error validando archivo CSV: {str(e)}'
+                }), 400
+                
+        except Exception as e:
+            app.logger.error(f"Error en upload de CSV: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Error procesando archivo: {str(e)}'
+            }), 500
+
     @app.route('/<path:path>')
     def catch_all(path):
         """Maneja rutas no encontradas"""
@@ -539,17 +643,36 @@ class TicketAnalyzer:
         self.csv_path = Path(data_path) / "glpi.csv"
         
     def _load_data(self):
-        """Carga datos del CSV"""
+        """Carga datos del CSV con manejo robusto de encoding y formato"""
         if not self.csv_path.exists():
             raise FileNotFoundError(f"Archivo CSV no encontrado: {self.csv_path}")
         
-        try:
-            df = pd.read_csv(self.csv_path, delimiter=';', encoding='utf-8')
-            logging.info(f"Datos cargados exitosamente: {len(df)} filas, {len(df.columns)} columnas")
-            return df
-        except Exception as e:
-            logging.error(f"Error al cargar CSV: {e}")
-            raise
+        # Intentar múltiples configuraciones para manejar archivos GLPI
+        encodings_to_try = ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252']
+        
+        for encoding in encodings_to_try:
+            try:
+                df = pd.read_csv(
+                    self.csv_path, 
+                    delimiter=';', 
+                    encoding=encoding,
+                    quotechar='"',  # Manejar comillas en valores
+                    skipinitialspace=True,  # Limpiar espacios extra
+                    na_values=['', 'NULL', 'null', 'N/A', 'n/a']  # Valores nulos
+                )
+                logging.info(f"Datos cargados exitosamente con {encoding}: {len(df)} filas, {len(df.columns)} columnas")
+                
+                # Log de las primeras columnas para debug
+                logging.info(f"Columnas encontradas: {list(df.columns[:10])}")
+                return df
+                
+            except Exception as e:
+                logging.debug(f"Falló carga con encoding {encoding}: {e}")
+                continue
+        
+        # Si ningún encoding funcionó
+        logging.error(f"No se pudo cargar el archivo CSV con ninguna configuración")
+        raise ValueError("Archivo CSV no compatible o corrupto")
     
     def get_overall_metrics(self):
         """Obtiene métricas generales"""
@@ -563,20 +686,41 @@ class TicketAnalyzer:
             resolved_tickets = len(df[df['Estado'].isin(resolved_states)])
             resolution_rate = (resolved_tickets / total_tickets * 100) if total_tickets > 0 else 0
             
-            # SLA compliance
-            sla_exceeded = 0
-            if 'Se superó el tiempo de resolución' in df.columns:
-                sla_exceeded = len(df[df['Se superó el tiempo de resolución'] == 'Si'])
-            sla_compliance = ((total_tickets - sla_exceeded) / total_tickets * 100) if total_tickets > 0 else 0
+            # SLA compliance - CORREGIDO: Solo aplicar a incidencias
+            sla_compliance = 0
+            if 'Tipo' in df.columns and 'Se superó el tiempo de resolución' in df.columns:
+                # Filtrar solo incidencias para el cálculo de SLA
+                incidents = df[df['Tipo'] == 'Incidencia']
+                total_incidents = len(incidents)
+                
+                if total_incidents > 0:
+                    sla_exceeded = len(incidents[incidents['Se superó el tiempo de resolución'] == 'Si'])
+                    sla_compliance = ((total_incidents - sla_exceeded) / total_incidents * 100)
+                    logging.info(f"SLA calculation: {total_incidents} incidencias, {sla_exceeded} excedidas, {round(sla_compliance, 1)}% compliance")
+                else:
+                    logging.warning("No se encontraron incidencias para calcular SLA")
             
             # Tiempo promedio de resolución (simulado si no hay datos reales)
             avg_resolution_time = 24.5  # Placeholder
+            
+            # Obtener datos del CSAT
+            csat_data = self.get_csat_score()
+            
+            # Contar mantenimientos preventivos
+            preventive_maintenance_count = 0
+            if 'Categoría' in df.columns:
+                preventive_maintenance_count = len(df[df['Categoría'] == 'Equipos Computo > Computador > Mantenimiento Preventivo'])
+                logging.info(f"Mantenimientos preventivos encontrados: {preventive_maintenance_count}")
             
             return {
                 'total_tickets': total_tickets,
                 'resolution_rate': round(resolution_rate, 1),
                 'avg_resolution_time_hours': avg_resolution_time,
-                'sla_compliance': round(sla_compliance, 1)
+                'sla_compliance': round(sla_compliance, 1),
+                'csat_percentage': csat_data.get('csat_percentage', 0),
+                'high_satisfaction_count': csat_data.get('high_satisfaction_count', 0),
+                'total_surveys': csat_data.get('total_surveys', 0),
+                'preventive_maintenance_count': preventive_maintenance_count
             }
             
         except Exception as e:
@@ -585,7 +729,11 @@ class TicketAnalyzer:
                 'total_tickets': 0,
                 'resolution_rate': 0,
                 'avg_resolution_time_hours': 0,
-                'sla_compliance': 0
+                'sla_compliance': 0,
+                'csat_percentage': 0,
+                'high_satisfaction_count': 0,
+                'total_surveys': 0,
+                'preventive_maintenance_count': 0
             }
     
     def get_ticket_distribution(self):
@@ -764,7 +912,7 @@ class TicketAnalyzer:
             return {'total_incidents': 0, 'sla_exceeded': 0, 'sla_compliance_rate': 0, 'sla_compliance_by_level': {}}
     
     def get_csat_score(self):
-        """Obtiene score de satisfacción del cliente"""
+        """Obtiene score de satisfacción del cliente - CORREGIDO: Porcentaje de 4-5 estrellas"""
         try:
             df = self._load_data()
             
@@ -778,22 +926,36 @@ class TicketAnalyzer:
                     break
             
             if csat_column is None:
-                return {'average_csat': 0, 'total_surveys': 0, 'distribution': {}}
+                return {'csat_percentage': 0, 'total_surveys': 0, 'high_satisfaction_count': 0, 'distribution': {}}
             
+            # Convertir a numérico y filtrar valores válidos (1-5)
             csat_scores = pd.to_numeric(df[csat_column], errors='coerce').dropna()
+            valid_scores = csat_scores[(csat_scores >= 1) & (csat_scores <= 5)]
             
-            if len(csat_scores) > 0:
+            if len(valid_scores) > 0:
+                # Contar encuestas con 4 o 5 estrellas (alta satisfacción)
+                high_satisfaction = valid_scores[valid_scores >= 4]
+                high_satisfaction_count = len(high_satisfaction)
+                total_surveys = len(valid_scores)
+                
+                # Calcular porcentaje de alta satisfacción
+                csat_percentage = (high_satisfaction_count / total_surveys * 100) if total_surveys > 0 else 0
+                
+                logging.info(f"CSAT calculation: {high_satisfaction_count} encuestas ≥4 de {total_surveys} total = {round(csat_percentage, 1)}%")
+                
                 return {
-                    'average_csat': round(csat_scores.mean(), 2),
-                    'total_surveys': len(csat_scores),
-                    'distribution': csat_scores.value_counts().to_dict()
+                    'csat_percentage': round(csat_percentage, 1),
+                    'total_surveys': total_surveys,
+                    'high_satisfaction_count': high_satisfaction_count,
+                    'distribution': valid_scores.value_counts().to_dict(),
+                    'average_csat': round(valid_scores.mean(), 2)  # Mantener promedio para referencia
                 }
             else:
-                return {'average_csat': 0, 'total_surveys': 0, 'distribution': {}}
+                return {'csat_percentage': 0, 'total_surveys': 0, 'high_satisfaction_count': 0, 'distribution': {}}
                 
         except Exception as e:
             logging.error(f"Error en get_csat_score: {e}")
-            return {'average_csat': 0, 'total_surveys': 0, 'distribution': {}}
+            return {'csat_percentage': 0, 'total_surveys': 0, 'high_satisfaction_count': 0, 'distribution': {}}
     
     def get_data_validation_insights(self):
         """Obtiene insights de validación de datos"""
