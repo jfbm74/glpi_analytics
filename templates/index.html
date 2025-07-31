@@ -98,10 +98,14 @@
 
         .metric-card {
             background: linear-gradient(135deg, var(--bonsana-white) 0%, #fafafa 100%);
+            height: 140px;
         }
 
         .metric-card .card-body {
             padding: 1.5rem;
+            height: 100%;
+            display: flex;
+            align-items: center;
         }
 
         .metric-value {
@@ -290,13 +294,69 @@
 
         </ul>
 
+        <!-- File Upload Section - Collapsible -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-upload me-2 text-primary"></i>
+                                <span class="fw-semibold">Subir Archivo GLPI CSV</span>
+                                {% if csv_exists and csv_info %}
+                                <small class="text-success ms-3">
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    glpi.csv ({{ csv_info.columns if csv_info.columns else 0 }} columnas)
+                                </small>
+                                {% endif %}
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#uploadSection" aria-expanded="false" aria-controls="uploadSection">
+                                <i class="bi bi-chevron-down" id="uploadToggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="collapse" id="uploadSection">
+                        <div class="card-body">
+                            <p class="card-text text-muted mb-3">
+                                Sube un archivo CSV exportado desde GLPI para actualizar los datos del dashboard.
+                            </p>
+                            <form id="csvUploadForm" enctype="multipart/form-data">
+                                <div class="row align-items-end">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="csvFile" class="form-label">Seleccionar archivo CSV</label>
+                                            <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv" required>
+                                            <div class="form-text">Solo archivos CSV. Tamaño máximo: 50MB</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
+                                                <i class="bi bi-upload me-2"></i>Subir Archivo
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                            <div id="uploadProgress" class="mt-3" style="display: none;">
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div id="uploadStatus" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab Content -->
         <div class="tab-content" id="tabContent">
             <!-- Overview Tab -->
             <div class="tab-pane fade show active" id="overview" role="tabpanel">
                 <!-- Key Metrics Row -->
                 <div class="row mb-4">
-                    <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
                         <div class="card metric-card">
                             <div class="card-body text-center">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -309,7 +369,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
                         <div class="card metric-card">
                             <div class="card-body text-center">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -322,7 +382,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
                         <div class="card metric-card">
                             <div class="card-body text-center">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -335,15 +395,44 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
                         <div class="card metric-card">
                             <div class="card-body text-center">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="metric-value" id="slaCompliance">-</div>
-                                        <div class="metric-label">Cumplimiento SLA</div>
+                                        <div class="metric-label">Cumplimiento SLA (Incidencias)</div>
                                     </div>
                                     <i class="bi bi-shield-check metric-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="metric-value" id="csatMetric">-</div>
+                                        <div class="metric-label">CSAT Alto (4-5★)</div>
+                                        <small class="text-muted mt-1">
+                                            <span id="csatMetricCount">-</span> de <span id="csatMetricTotal">-</span>
+                                        </small>
+                                    </div>
+                                    <i class="bi bi-emoji-smile metric-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="metric-value" id="preventiveMaintenanceCount">-</div>
+                                        <div class="metric-label">Mantenimientos Preventivos</div>
+                                    </div>
+                                    <i class="bi bi-tools metric-icon"></i>
                                 </div>
                             </div>
                         </div>
@@ -422,9 +511,9 @@
                             <div class="card-body">
                                 <div class="text-center">
                                     <div class="metric-value" id="csatScore">-</div>
-                                    <div class="metric-label">CSAT Promedio</div>
+                                    <div class="metric-label">CSAT Alto (4-5★)</div>
                                     <small class="text-muted">
-                                        <span id="csatSurveys">-</span> encuestas respondidas
+                                        <span id="csatHighCount">-</span> de <span id="csatSurveys">-</span> encuestas
                                     </small>
                                 </div>
                                 <div class="chart-container small mt-3">
@@ -699,9 +788,162 @@
         // Data storage
         let dashboardData = {};
 
+        // File upload functionality
+        function setupFileUpload() {
+            const form = document.getElementById('csvUploadForm');
+            const fileInput = document.getElementById('csvFile');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progressContainer = document.getElementById('uploadProgress');
+            const progressBar = progressContainer.querySelector('.progress-bar');
+            const statusContainer = document.getElementById('uploadStatus');
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const file = fileInput.files[0];
+                if (!file) {
+                    showUploadStatus('error', 'Por favor selecciona un archivo CSV');
+                    return;
+                }
+
+                // Validate file type
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    showUploadStatus('error', 'Solo se permiten archivos CSV');
+                    return;
+                }
+
+                // Validate file size (50MB max)
+                const maxSize = 50 * 1024 * 1024; // 50MB
+                if (file.size > maxSize) {
+                    showUploadStatus('error', 'El archivo es demasiado grande. Máximo 50MB');
+                    return;
+                }
+
+                // Prepare upload
+                const formData = new FormData();
+                formData.append('csv_file', file);
+
+                // Show progress
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Subiendo...';
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                statusContainer.innerHTML = '';
+
+                try {
+                    // Simulate progress for user feedback
+                    let progress = 0;
+                    const progressInterval = setInterval(() => {
+                        progress += Math.random() * 30;
+                        if (progress > 90) progress = 90;
+                        progressBar.style.width = progress + '%';
+                    }, 100);
+
+                    // Upload file
+                    const response = await fetch('/upload-csv', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    clearInterval(progressInterval);
+                    progressBar.style.width = '100%';
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showUploadStatus('success', result.message);
+                        if (result.file_info) {
+                            const info = result.file_info;
+                            showUploadStatus('info', 
+                                `Archivo: ${info.filename} (${info.size_mb} MB, ${info.columns} columnas)`
+                            );
+                        }
+                        
+                        // Reload dashboard data after successful upload
+                        setTimeout(() => {
+                            loadDashboardData();
+                            showUploadStatus('info', 'Datos del dashboard actualizados');
+                        }, 2000);
+                        
+                        // Reset form
+                        form.reset();
+                        
+                    } else {
+                        showUploadStatus('error', result.error || 'Error subiendo archivo');
+                    }
+
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    showUploadStatus('error', 'Error de conexión. Intenta nuevamente.');
+                    progressBar.style.width = '0%';
+                } finally {
+                    // Reset button
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '<i class="bi bi-upload me-2"></i>Subir Archivo';
+                    
+                    // Hide progress after delay
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 3000);
+                }
+            });
+
+            // File input change handler
+            fileInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    statusContainer.innerHTML = '';
+                    if (!file.name.toLowerCase().endsWith('.csv')) {
+                        showUploadStatus('warning', 'Asegúrate de que sea un archivo CSV');
+                    }
+                }
+            });
+        }
+
+        function showUploadStatus(type, message) {
+            const statusContainer = document.getElementById('uploadStatus');
+            const alertClass = {
+                'success': 'alert-success',
+                'error': 'alert-danger',
+                'warning': 'alert-warning',
+                'info': 'alert-info'
+            }[type] || 'alert-info';
+            
+            const icon = {
+                'success': 'bi-check-circle',
+                'error': 'bi-exclamation-triangle',
+                'warning': 'bi-exclamation-triangle',
+                'info': 'bi-info-circle'
+            }[type] || 'bi-info-circle';
+
+            statusContainer.innerHTML = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="bi ${icon} me-2"></i>${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+
+        function setupCollapsibleUpload() {
+            const uploadSection = document.getElementById('uploadSection');
+            const toggleIcon = document.getElementById('uploadToggleIcon');
+            
+            uploadSection.addEventListener('show.bs.collapse', function () {
+                toggleIcon.classList.remove('bi-chevron-down');
+                toggleIcon.classList.add('bi-chevron-up');
+            });
+            
+            uploadSection.addEventListener('hide.bs.collapse', function () {
+                toggleIcon.classList.remove('bi-chevron-up');
+                toggleIcon.classList.add('bi-chevron-down');
+            });
+        }
+
         // Load all data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
+            setupFileUpload();
+            setupCollapsibleUpload();
         });
 
         async function loadDashboardData() {
@@ -755,6 +997,10 @@
             document.getElementById('resolutionRate').textContent = `${metrics.resolution_rate || 0}%`;
             document.getElementById('avgResolutionTime').textContent = metrics.avg_resolution_time_hours || 0;
             document.getElementById('slaCompliance').textContent = `${metrics.sla_compliance || 0}%`;
+            document.getElementById('csatMetric').textContent = `${metrics.csat_percentage || 0}%`;
+            document.getElementById('csatMetricCount').textContent = metrics.high_satisfaction_count || 0;
+            document.getElementById('csatMetricTotal').textContent = metrics.total_surveys || 0;
+            document.getElementById('preventiveMaintenanceCount').textContent = metrics.preventive_maintenance_count || 0;
         }
 
         function updateCharts() {
@@ -1030,8 +1276,10 @@ function addUnassignedTicketsAlert(container, count) {
             const ctx = document.getElementById('csatChart').getContext('2d');
             const data = dashboardData.csat || {};
             
-            document.getElementById('csatScore').textContent = data.average_csat || '-';
+            // Actualizar métricas - CORREGIDO: mostrar porcentaje de alta satisfacción
+            document.getElementById('csatScore').textContent = `${data.csat_percentage || 0}%`;
             document.getElementById('csatSurveys').textContent = data.total_surveys || 0;
+            document.getElementById('csatHighCount').textContent = data.high_satisfaction_count || 0;
             
             if (data.distribution && Object.keys(data.distribution).length > 0) {
                 new Chart(ctx, {
