@@ -1,0 +1,459 @@
+# CI/CD Pipeline para Dashboard IT - Clínica Bonsana
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # Job de Tests y Calidad de Código
+  test:
+    name: Tests y Quality Checks
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache dependencias pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov black flake8 safety bandit
+    
+    - name: Verificar formato de código (Black)
+      run: |
+        black --check --diff .
+    
+    - name: Lint con Flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Verificar vulnerabilidades de seguridad
+      run: |
+        safety check
+        bandit -r . -f json -o bandit-report.json || true
+    
+    - name: Ejecutar tests unitarios
+      env:
+        GOOGLE_AI_API_KEY: ${{ secrets.TEST_GOOGLE_AI_API_KEY }}
+        FLASK_ENV: testing
+      run: |
+        pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
+    
+    - name: Subir cobertura a Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Archivar reportes de pruebas
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-reports-${{ matrix.python-version }}
+        path: |
+          htmlcov/
+          bandit-report.json
+          pytest-report.html
+
+  # Job de Tests de Integración
+  integration-tests:
+    name: Tests de Integración
+    runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: dashboard_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-integration
+    
+    - name: Ejecutar tests de integración
+      env:
+        DATABASE_URL: postgresql://postgres:test_password@localhost:5432/dashboard_test
+        REDIS_URL: redis://localhost:6379/0
+        GOOGLE_AI_API_KEY: ${{ secrets.TEST_GOOGLE_AI_API_KEY }}
+        FLASK_ENV: testing
+      run: |
+        pytest tests/integration/ -v --maxfail=5
+    
+    - name: Test de carga de aplicación
+      env:
+        DATABASE_URL: postgresql://postgres:test_password@localhost:5432/dashboard_test
+        REDIS_URL: redis://localhost:6379/0
+        FLASK_ENV: testing
+      run: |
+        python -c "
+        from app import create_app
+        app = create_app()
+        with app.test_client() as client:
+            response = client.get('/health')
+            assert response.status_code == 200
+            print('✅ Aplicación carga correctamente')
+        "
+
+  # Job de Build Docker
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, integration-tests]
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login a Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Extraer metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: clinicabonsana/dashboard-it
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha
+    
+    - name: Build y Push imagen Docker
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test imagen Docker
+      run: |
+        docker run --rm -d -p 5000:5000 --name test-container \
+          -e FLASK_ENV=testing \
+          clinicabonsana/dashboard-it:${{ github.sha }}
+        
+        # Esperar que la aplicación inicie
+        sleep 30
+        
+        # Test health check
+        curl -f http://localhost:5000/health || exit 1
+        
+        # Detener contenedor
+        docker stop test-container
+
+  # Job de Security Scan
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: docker-build
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Ejecutar Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'clinicabonsana/dashboard-it:${{ github.sha }}'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Subir resultados de Trivy a GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'dashboard-it'
+        path: '.'
+        format: 'ALL'
+        args: >
+          --enableRetired
+          --enableExperimental
+          --failOnCVSS 7
+    
+    - name: Subir resultados de OWASP
+      uses: actions/upload-artifact@v3
+      with:
+        name: dependency-check-report
+        path: reports/
+
+  # Job de Deploy a Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, integration-tests, docker-build, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar Docker context para staging
+      run: |
+        echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        docker context create staging --docker "host=ssh://deploy@${{ secrets.STAGING_HOST }}"
+    
+    - name: Deploy a staging
+      run: |
+        docker context use staging
+        
+        # Crear directorio de deployment
+        ssh deploy@${{ secrets.STAGING_HOST }} "mkdir -p /opt/dashboard-it"
+        
+        # Copiar docker-compose para staging
+        scp docker-compose.staging.yml deploy@${{ secrets.STAGING_HOST }}:/opt/dashboard-it/docker-compose.yml
+        
+        # Deploy con docker-compose
+        ssh deploy@${{ secrets.STAGING_HOST }} "
+          cd /opt/dashboard-it
+          docker-compose pull
+          docker-compose up -d
+          docker-compose exec -T dashboard python -c 'from app import create_app; print(\"Health check passed\")'
+        "
+    
+    - name: Ejecutar smoke tests en staging
+      run: |
+        sleep 60  # Esperar que el servicio esté listo
+        
+        # Tests básicos
+        curl -f https://staging.dashboard.clinicabonsana.com/health
+        curl -f https://staging.dashboard.clinicabonsana.com/api/config
+        
+        echo "✅ Smoke tests passed"
+    
+    - name: Notificar deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: |
+          🚀 Deployment a staging completado
+          📦 Imagen: clinicabonsana/dashboard-it:${{ github.sha }}
+          🔗 URL: https://staging.dashboard.clinicabonsana.com
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job de Deploy a Producción
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, integration-tests, docker-build, security-scan]
+    if: github.event_name == 'release'
+    environment: production
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+    
+    - name: Configurar kubeconfig
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+    
+    - name: Deploy a Kubernetes
+      run: |
+        # Actualizar imagen en deployment
+        kubectl set image deployment/dashboard-it \
+          dashboard-it=clinicabonsana/dashboard-it:${{ github.event.release.tag_name }} \
+          -n dashboard-production
+        
+        # Esperar rollout
+        kubectl rollout status deployment/dashboard-it -n dashboard-production --timeout=600s
+        
+        # Verificar pods
+        kubectl get pods -n dashboard-production -l app=dashboard-it
+    
+    - name: Ejecutar tests post-deployment
+      run: |
+        # Obtener URL del servicio
+        EXTERNAL_IP=$(kubectl get service dashboard-it-service -n dashboard-production -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        
+        # Tests de producción
+        curl -f https://dashboard.clinicabonsana.com/health
+        curl -f https://dashboard.clinicabonsana.com/api/config
+        
+        echo "✅ Production deployment verified"
+    
+    - name: Crear GitHub Release Notes
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const release = context.payload.release;
+          const deploymentInfo = `
+          ## 🚀 Deployment Information
+          
+          - **Version**: ${release.tag_name}
+          - **Environment**: Production
+          - **Docker Image**: clinicabonsana/dashboard-it:${release.tag_name}
+          - **Deployment Time**: ${new Date().toISOString()}
+          - **Commit**: ${context.sha}
+          
+          ## ✅ Verification
+          
+          - Health check passed
+          - API endpoints verified
+          - Security scans completed
+          
+          ## 🔗 URLs
+          
+          - [Dashboard](https://dashboard.clinicabonsana.com)
+          - [API Documentation](https://dashboard.clinicabonsana.com/docs)
+          - [Health Status](https://dashboard.clinicabonsana.com/health)
+          `;
+          
+          await github.rest.repos.updateRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: release.id,
+            body: release.body + deploymentInfo
+          });
+    
+    - name: Notificar deployment exitoso
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: |
+          🎉 Deployment a producción exitoso!
+          📦 Versión: ${{ github.event.release.tag_name }}
+          🔗 URL: https://dashboard.clinicabonsana.com
+          👥 Por: ${{ github.actor }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job de Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: Limpiar imágenes Docker antiguas
+      run: |
+        # Mantener solo las últimas 5 imágenes
+        docker images clinicabonsana/dashboard-it --format "table {{.Tag}}\t{{.CreatedAt}}" | \
+        tail -n +6 | \
+        awk '{print $1}' | \
+        xargs -r docker rmi clinicabonsana/dashboard-it: || true
+    
+    - name: Limpiar artefactos antiguos
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listArtifactsForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+          
+          // Eliminar artefactos más antiguos de 30 días
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+          
+          for (const artifact of artifacts.data.artifacts) {
+            if (new Date(artifact.created_at) < thirtyDaysAgo) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(`Deleted artifact: ${artifact.name}`);
+            }
+          }
+
+# Configuración de notificaciones
+on_failure:
+  needs: [test, integration-tests, docker-build, security-scan, deploy-staging, deploy-production]
+  if: failure()
+  runs-on: ubuntu-latest
+  steps:
+    - name: Notificar fallo
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: |
+          ❌ Pipeline falló en: ${{ github.workflow }}
+          🔗 Commit: ${{ github.sha }}
+          👥 Por: ${{ github.actor }}
+          📄 Ver detalles: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

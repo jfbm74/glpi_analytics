@@ -26,6 +26,20 @@
             animation: bounce 2s infinite;
         }
 
+        /* Estilos para enlaces de tickets GLPI */
+        .ticket-link {
+            color: #0066cc !important;
+            font-weight: 500;
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+        }
+        .ticket-link:hover {
+            color: #004499 !important;
+            background-color: #e6f3ff;
+            text-decoration: underline !important;
+        }
+        
         @keyframes pulseWarning {
             0%, 100% { 
                 border-left-color: #ff6b35;
@@ -527,17 +541,194 @@
 
             <!-- Analysis Tab -->
             <div class="tab-pane fade" id="analysis" role="tabpanel">
+                <!-- Resumen de Infraestructura Crítica -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>Análisis de Infraestructura Crítica
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Email/Correo -->
+                                    <div class="col-md-3 mb-3">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-envelope-exclamation fs-4 text-danger me-2"></i>
+                                                <h6 class="mb-0">Email/Correo</h6>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-end">
+                                                <div>
+                                                    <div class="display-6" id="emailIncidents">0</div>
+                                                    <small class="text-muted">Incidencias</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-danger" id="emailCritical">0 críticas</small>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">Principal problema:</small>
+                                                <small class="d-block text-truncate" id="emailTopIssue">Cuentas cerradas</small>
+                                            </div>
+                                            <div class="mt-1" id="emailCriticalIds" style="display: none;">
+                                                <small class="text-danger">IDs críticos:</small>
+                                                <small class="d-block" id="emailCriticalIdsList"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- SQL/Base de Datos -->
+                                    <div class="col-md-3 mb-3">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-database-exclamation fs-4 text-warning me-2"></i>
+                                                <h6 class="mb-0">SQL/Base de Datos</h6>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-end">
+                                                <div>
+                                                    <div class="display-6" id="sqlIncidents">0</div>
+                                                    <small class="text-muted">Incidencias</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-warning" id="sqlCritical">0 críticas</small>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">Principal problema:</small>
+                                                <small class="d-block text-truncate" id="sqlTopIssue">Inconsistencias SQL</small>
+                                            </div>
+                                            <div class="mt-1" id="sqlCriticalIds" style="display: none;">
+                                                <small class="text-danger">IDs críticos:</small>
+                                                <small class="d-block" id="sqlCriticalIdsList"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Impresión -->
+                                    <div class="col-md-3 mb-3">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-printer fs-4 text-info me-2"></i>
+                                                <h6 class="mb-0">Servicios de Impresión</h6>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-end">
+                                                <div>
+                                                    <div class="display-6" id="printIncidents">0</div>
+                                                    <small class="text-muted">Incidencias</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-info" id="printCritical">0 críticas</small>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">Principal problema:</small>
+                                                <small class="d-block text-truncate" id="printTopIssue">Fallas de impresora</small>
+                                            </div>
+                                            <div class="mt-1" id="printCriticalIds" style="display: none;">
+                                                <small class="text-danger">IDs críticos:</small>
+                                                <small class="d-block" id="printCriticalIdsList"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Equipos/Red -->
+                                    <div class="col-md-3 mb-3">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-pc-display fs-4 text-success me-2"></i>
+                                                <h6 class="mb-0">Equipos y Red</h6>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-end">
+                                                <div>
+                                                    <div class="display-6" id="equipmentIncidents">0</div>
+                                                    <small class="text-muted">Incidencias</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-success" id="equipmentCritical">0 críticas</small>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">Principal problema:</small>
+                                                <small class="d-block text-truncate" id="equipmentTopIssue">Conexión a Internet</small>
+                                            </div>
+                                            <div class="mt-1" id="equipmentCriticalIds" style="display: none;">
+                                                <small class="text-danger">IDs críticos:</small>
+                                                <small class="d-block" id="equipmentCriticalIdsList"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equipos con Incidentes y Tiempo de Resolución -->
+                <div class="row mb-4">
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-pc-display-horizontal me-2"></i>Equipos con Más Incidentes
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="equipmentIncidentsList" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Cargando equipos...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-clock-history me-2"></i>Tiempo de Resolución por Categoría
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="resolutionTimeByCategory">
+                                    <div class="text-center">
+                                        <div class="loading-spinner"></div>
+                                        <p class="mt-2 text-muted">Cargando datos...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patrones y Problemas Recurrentes -->
                 <div class="row mb-4">
                     <div class="col-lg-8 mb-3">
                         <div class="card">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">
-                                    <i class="bi bi-graph-up me-2"></i>Top Categorías de Problemas
+                                    <i class="bi bi-arrow-repeat me-2"></i>Problemas Recurrentes y Patrones
                                 </h5>
                             </div>
                             <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="categoryChart"></canvas>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Problema</th>
+                                                <th>Frecuencia</th>
+                                                <th>Área Afectada</th>
+                                                <th>Impacto</th>
+                                                <th>Tendencia</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recurringProblems">
+                                            <tr>
+                                                <td colspan="5" class="text-center">
+                                                    <div class="loading-spinner"></div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -546,11 +737,11 @@
                         <div class="card">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">
-                                    <i class="bi bi-person-check me-2"></i>Top Solicitantes
+                                    <i class="bi bi-person-lines-fill me-2"></i>Top 5 Usuarios
                                 </h5>
                             </div>
                             <div class="card-body">
-                                <div id="topRequesters">
+                                <div id="topAreas">
                                     <div class="text-center">
                                         <div class="loading-spinner"></div>
                                         <p class="mt-2 text-muted">Cargando datos...</p>
@@ -596,6 +787,35 @@
                                                 <div class="loading-spinner"></div>
                                                 <p class="mt-2 text-muted">Cargando análisis SLA...</p>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tickets con SLA Excedido -->
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <h6>Tickets que Excedieron SLA</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Título</th>
+                                                        <th>Categoría</th>
+                                                        <th>Técnico Asignado</th>
+                                                        <th>Prioridad</th>
+                                                        <th>Solicitante</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="slaExceededTickets">
+                                                    <tr>
+                                                        <td colspan="6" class="text-center">
+                                                            <div class="loading-spinner"></div>
+                                                            <p class="mt-2 text-muted">Cargando tickets...</p>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </div>
@@ -695,6 +915,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        // Global variables
+        let glpiBaseUrl = 'http://192.168.0.92:8080'; // Default value
+        
+        // Load GLPI configuration
+        async function loadGLPIConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    glpiBaseUrl = config.glpi_base_url || 'http://192.168.0.92:8080';
+                }
+            } catch (error) {
+                console.error('Error loading GLPI config:', error);
+            }
+        }
+        
+        // Function to create GLPI ticket links
+        function createGLPILinks(ticketIds, baseUrl = glpiBaseUrl) {
+            if (!ticketIds || ticketIds.length === 0) return '';
+            
+            return ticketIds.map(id => {
+                const url = `${baseUrl}/front/ticket.form.php?id=${id}`;
+                return `<a href="${url}" target="_blank" class="ticket-link text-decoration-none text-primary">${id}</a>`;
+            }).join(', ');
+        }
+        
         // Global chart configuration
         Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
         Chart.defaults.color = '#6c757d';
@@ -940,7 +1186,8 @@
         }
 
         // Load all data on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadGLPIConfig();
             loadDashboardData();
             setupFileUpload();
             setupCollapsibleUpload();
@@ -948,8 +1195,10 @@
 
         async function loadDashboardData() {
             try {
+                console.log('🔄 Loading dashboard data...');
+                
                 // Load all data in parallel
-                const [metrics, distributions, technicians, requesters, sla, csat, validation, techSLA, techCSAT, techResolution] = await Promise.all([
+                const [metrics, distributions, technicians, requesters, sla, csat, validation, techSLA, techCSAT, techResolution, infrastructure, recurringProblems, resolutionTimeByCategory, topAffectedAreas, slaExceededTickets, equipmentIncidents] = await Promise.all([
                     fetch('/api/metrics').then(r => r.json()),
                     fetch('/api/distributions').then(r => r.json()),
                     fetch('/api/technicians').then(r => r.json()),
@@ -959,8 +1208,16 @@
                     fetch('/api/validation').then(r => r.json()),
                     fetch('/api/technicians/sla').then(r => r.json()),
                     fetch('/api/technicians/csat').then(r => r.json()),
-                    fetch('/api/technicians/resolution-time').then(r => r.json())
+                    fetch('/api/technicians/resolution-time').then(r => r.json()),
+                    fetch('/api/infrastructure').then(r => r.json()).catch(e => {console.error('Infrastructure API error:', e); return {};}),
+                    fetch('/api/recurring-problems').then(r => r.json()).catch(e => {console.error('Recurring problems API error:', e); return [];}),
+                    fetch('/api/resolution-time-by-category').then(r => r.json()).catch(e => {console.error('Resolution time API error:', e); return {};}),
+                    fetch('/api/top-affected-areas').then(r => r.json()).catch(e => {console.error('Top areas API error:', e); return [];}),
+                    fetch('/api/sla-exceeded-tickets').then(r => r.json()).catch(e => {console.error('SLA exceeded tickets API error:', e); return [];}),
+                    fetch('/api/equipment-incidents').then(r => r.json()).catch(e => {console.error('Equipment incidents API error:', e); return [];})
                 ]);
+
+                console.log('✅ All data loaded:', {infrastructure, recurringProblems, resolutionTimeByCategory, topAffectedAreas});
 
                 dashboardData = {
                     metrics,
@@ -972,7 +1229,13 @@
                     validation,
                     technicianSLA: techSLA,
                     technicianCSAT: techCSAT,
-                    technicianResolution: techResolution
+                    technicianResolution: techResolution,
+                    infrastructure,
+                    recurringProblems,
+                    resolutionTimeByCategory,
+                    topAffectedAreas,
+                    slaExceededTickets,
+                    equipmentIncidents
                 };
 
                 updateDashboard();
@@ -1009,7 +1272,6 @@
             createPriorityChart();
             createTechnicianChart();
             createCSATChart();
-            createCategoryChart();
         }
 
         function createTypeDistributionChart() {
@@ -1322,74 +1584,298 @@ function addUnassignedTicketsAlert(container, count) {
                 });
             }
         }
-
-        function createCategoryChart() {
-            const ctx = document.getElementById('categoryChart').getContext('2d');
-            const data = dashboardData.distributions.by_category || {};
-            
-            // Get top 10 categories
-            const sortedCategories = Object.entries(data)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 10);
-            
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: sortedCategories.map(([name]) => name.length > 20 ? name.substring(0, 20) + '...' : name),
-                    datasets: [{
-                        data: sortedCategories.map(([,count]) => count),
-                        backgroundColor: colors.primary,
-                        borderWidth: 1,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const categoryName = sortedCategories[context.dataIndex][0];
-                                    return `${categoryName}: ${context.parsed.x} tickets`;
-                                }
-                            }
-                        },
-                        showValues: {
-                            display: true,
-                            color: '#333',
-                            font: 'bold 12px Arial'
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
+        
 
         function updateAnalysis() {
-            updateTopRequesters();
+            updateInfrastructureMetrics();
+            updateRecurringProblems();
+            updateResolutionTimeByCategory();
+            updateEquipmentIncidents();
+            updateTopAffectedAreas();
             updateSLAAnalysis();
+            updateSLAExceededTickets();
         }
 
-        function updateTopRequesters() {
-            const container = document.getElementById('topRequesters');
-            const data = dashboardData.requesters || {};
+        function updateInfrastructureMetrics() {
+            const data = dashboardData.infrastructure || {};
+            console.log('🔍 Infrastructure data received:', data);
+            console.log('🔍 Dashboard data structure:', dashboardData);
+            
+            // Debug: Check if elements exist
+            console.log('🔍 Checking if DOM elements exist:');
+            console.log('emailIncidents element:', document.getElementById('emailIncidents'));
+            console.log('sqlIncidents element:', document.getElementById('sqlIncidents'));
+            console.log('printIncidents element:', document.getElementById('printIncidents'));
+            console.log('equipmentIncidents element:', document.getElementById('equipmentIncidents'));
+            
+            // Update Email metrics
+            const emailData = data.email || {};
+            const emailElement = document.getElementById('emailIncidents');
+            if (emailElement) {
+                emailElement.textContent = emailData.total_incidents || 0;
+                console.log('✅ Updated emailIncidents to:', emailData.total_incidents);
+            } else {
+                console.error('❌ emailIncidents element not found');
+            }
+            
+            const emailCriticalElement = document.getElementById('emailCritical');
+            if (emailCriticalElement) {
+                emailCriticalElement.textContent = `${emailData.critical_incidents || 0} críticas`;
+            }
+            
+            const emailTopIssueElement = document.getElementById('emailTopIssue');
+            if (emailTopIssueElement) {
+                emailTopIssueElement.textContent = emailData.top_issue || 'Sin datos';
+            }
+            
+            // Update critical IDs for Email
+            const emailCriticalIds = emailData.critical_ticket_ids || [];
+            const emailCriticalIdsContainer = document.getElementById('emailCriticalIds');
+            const emailCriticalIdsList = document.getElementById('emailCriticalIdsList');
+            if (emailCriticalIds.length > 0 && emailCriticalIdsContainer && emailCriticalIdsList) {
+                emailCriticalIdsList.innerHTML = createGLPILinks(emailCriticalIds);
+                emailCriticalIdsContainer.style.display = 'block';
+            } else if (emailCriticalIdsContainer) {
+                emailCriticalIdsContainer.style.display = 'none';
+            }
+            
+            // Update SQL metrics
+            const sqlData = data.sql || {};
+            const sqlElement = document.getElementById('sqlIncidents');
+            if (sqlElement) {
+                sqlElement.textContent = sqlData.total_incidents || 0;
+                console.log('✅ Updated sqlIncidents to:', sqlData.total_incidents);
+            } else {
+                console.error('❌ sqlIncidents element not found');
+            }
+            
+            const sqlCriticalElement = document.getElementById('sqlCritical');
+            if (sqlCriticalElement) {
+                sqlCriticalElement.textContent = `${sqlData.critical_incidents || 0} críticas`;
+            }
+            
+            const sqlTopIssueElement = document.getElementById('sqlTopIssue');
+            if (sqlTopIssueElement) {
+                sqlTopIssueElement.textContent = sqlData.top_issue || 'Sin datos';
+            }
+            
+            // Update critical IDs for SQL
+            const sqlCriticalIds = sqlData.critical_ticket_ids || [];
+            const sqlCriticalIdsContainer = document.getElementById('sqlCriticalIds');
+            const sqlCriticalIdsList = document.getElementById('sqlCriticalIdsList');
+            if (sqlCriticalIds.length > 0 && sqlCriticalIdsContainer && sqlCriticalIdsList) {
+                sqlCriticalIdsList.innerHTML = createGLPILinks(sqlCriticalIds);
+                sqlCriticalIdsContainer.style.display = 'block';
+            } else if (sqlCriticalIdsContainer) {
+                sqlCriticalIdsContainer.style.display = 'none';
+            }
+            
+            // Update Print metrics
+            const printData = data.print || {};
+            const printElement = document.getElementById('printIncidents');
+            if (printElement) {
+                printElement.textContent = printData.total_incidents || 0;
+                console.log('✅ Updated printIncidents to:', printData.total_incidents);
+            } else {
+                console.error('❌ printIncidents element not found');
+            }
+            
+            const printCriticalElement = document.getElementById('printCritical');
+            if (printCriticalElement) {
+                printCriticalElement.textContent = `${printData.critical_incidents || 0} críticas`;
+            }
+            
+            const printTopIssueElement = document.getElementById('printTopIssue');
+            if (printTopIssueElement) {
+                printTopIssueElement.textContent = printData.top_issue || 'Sin datos';
+            }
+            
+            // Update critical IDs for Print
+            const printCriticalIds = printData.critical_ticket_ids || [];
+            const printCriticalIdsContainer = document.getElementById('printCriticalIds');
+            const printCriticalIdsList = document.getElementById('printCriticalIdsList');
+            if (printCriticalIds.length > 0 && printCriticalIdsContainer && printCriticalIdsList) {
+                printCriticalIdsList.innerHTML = createGLPILinks(printCriticalIds);
+                printCriticalIdsContainer.style.display = 'block';
+            } else if (printCriticalIdsContainer) {
+                printCriticalIdsContainer.style.display = 'none';
+            }
+            
+            // Update Equipment metrics
+            const equipmentData = data.equipment || {};
+            const equipmentElement = document.getElementById('equipmentIncidents');
+            if (equipmentElement) {
+                equipmentElement.textContent = equipmentData.total_incidents || 0;
+                console.log('✅ Updated equipmentIncidents to:', equipmentData.total_incidents);
+            } else {
+                console.error('❌ equipmentIncidents element not found');
+            }
+            
+            const equipmentCriticalElement = document.getElementById('equipmentCritical');
+            if (equipmentCriticalElement) {
+                equipmentCriticalElement.textContent = `${equipmentData.critical_incidents || 0} críticas`;
+            }
+            
+            const equipmentTopIssueElement = document.getElementById('equipmentTopIssue');
+            if (equipmentTopIssueElement) {
+                equipmentTopIssueElement.textContent = equipmentData.top_issue || 'Sin datos';
+            }
+            
+            // Update critical IDs for Equipment
+            const equipmentCriticalIds = equipmentData.critical_ticket_ids || [];
+            const equipmentCriticalIdsContainer = document.getElementById('equipmentCriticalIds');
+            const equipmentCriticalIdsList = document.getElementById('equipmentCriticalIdsList');
+            if (equipmentCriticalIds.length > 0 && equipmentCriticalIdsContainer && equipmentCriticalIdsList) {
+                equipmentCriticalIdsList.innerHTML = createGLPILinks(equipmentCriticalIds);
+                equipmentCriticalIdsContainer.style.display = 'block';
+            } else if (equipmentCriticalIdsContainer) {
+                equipmentCriticalIdsContainer.style.display = 'none';
+            }
+        }
+
+        function updateRecurringProblems() {
+            const container = document.getElementById('recurringProblems');
+            const problems = dashboardData.recurringProblems || [];
+            
+            if (problems.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No se encontraron problemas recurrentes</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            problems.forEach(problem => {
+                const impactClass = problem.impact === 'alto' ? 'danger' : 
+                                  problem.impact === 'medio' ? 'warning' : 'success';
+                const trendIcon = problem.trend === 'creciente' ? 'bi-arrow-up text-danger' :
+                                problem.trend === 'decreciente' ? 'bi-arrow-down text-success' :
+                                'bi-arrow-right text-warning';
+                
+                html += `
+                    <tr>
+                        <td class="fw-medium">${problem.problem}</td>
+                        <td><span class="badge bg-primary">${problem.frequency}</span></td>
+                        <td><span class="badge bg-info">${problem.area}</span></td>
+                        <td><span class="badge bg-${impactClass}">${problem.impact}</span></td>
+                        <td><i class="${trendIcon}"></i> ${problem.trend}</td>
+                    </tr>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function updateResolutionTimeByCategory() {
+            const container = document.getElementById('resolutionTimeByCategory');
+            const data = dashboardData.resolutionTimeByCategory || {};
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="bi bi-clock-history display-6"></i>
+                        <p class="mt-2">No hay datos disponibles</p>
+                    </div>
+                `;
+                return;
+            }
             
             let html = '<div class="list-group list-group-flush">';
-            Object.entries(data).forEach(([requester, count]) => {
-                const displayName = requester.length > 25 ? requester.substring(0, 25) + '...' : requester;
+            Object.entries(data).forEach(([category, categoryData]) => {
+                const avgHours = categoryData.avg_hours || 0;
+                const count = categoryData.count || 0;
+                const timeClass = avgHours > 24 ? 'danger' : avgHours > 12 ? 'warning' : 'success';
+                
                 html += `
                     <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <span class="fw-medium">${displayName}</span>
-                        <span class="badge badge-custom rounded-pill">${count}</span>
+                        <div>
+                            <div class="fw-medium">${category}</div>
+                            <small class="text-muted">${count} tickets</small>
+                        </div>
+                        <span class="badge bg-${timeClass}">${avgHours}h</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        function updateEquipmentIncidents() {
+            const container = document.getElementById('equipmentIncidentsList');
+            const equipments = dashboardData.equipmentIncidents || [];
+            
+            if (equipments.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="bi bi-pc-display display-6"></i>
+                        <p class="mt-2">No se encontraron equipos con incidentes</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="list-group list-group-flush">';
+            equipments.forEach((equipment, index) => {
+                const rankClass = index < 3 ? 'text-danger fw-bold' : index < 5 ? 'text-warning fw-bold' : '';
+                const badgeClass = index < 3 ? 'bg-danger' : index < 5 ? 'bg-warning' : 'bg-primary';
+                const icon = index < 3 ? 'bi-exclamation-triangle-fill' : index < 5 ? 'bi-exclamation-circle-fill' : 'bi-pc-display';
+                
+                html += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <div class="d-flex align-items-center">
+                            <i class="${icon} me-2 ${rankClass}"></i>
+                            <div>
+                                <div class="fw-medium ${rankClass}">${equipment.equipment}</div>
+                                <small class="text-muted">${equipment.category}</small>
+                            </div>
+                        </div>
+                        <span class="badge ${badgeClass}">${equipment.incident_count} incidentes</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            // Agregar resumen al final
+            if (equipments.length > 10) {
+                html += `
+                    <div class="text-center mt-2">
+                        <small class="text-muted">Mostrando top ${equipments.length} equipos con más incidentes</small>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function updateTopAffectedAreas() {
+            const container = document.getElementById('topAreas');
+            const areas = dashboardData.topAffectedAreas || [];
+            
+            if (areas.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="bi bi-building display-6"></i>
+                        <p class="mt-2">No hay datos disponibles</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="list-group list-group-flush">';
+            areas.forEach(area => {
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="fw-medium">${area.area}</div>
+                            <span class="badge bg-primary">${area.incident_count}</span>
+                        </div>
+                        <div class="progress mt-2" style="height: 4px;">
+                            <div class="progress-bar" style="width: ${area.percentage}%"></div>
+                        </div>
+                        <small class="text-muted">${area.percentage}% del total</small>
                     </div>
                 `;
             });
@@ -1471,6 +1957,52 @@ function addUnassignedTicketsAlert(container, count) {
             }
             
             container.innerHTML = html || '<div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>No se encontraron problemas de calidad en los datos</div>';
+        }
+        
+        function updateSLAExceededTickets() {
+            const container = document.getElementById('slaExceededTickets');
+            const tickets = dashboardData.slaExceededTickets || [];
+            
+            console.log('🔍 updateSLAExceededTickets called');
+            console.log('🔍 Container found:', !!container);
+            console.log('🔍 Tickets data:', tickets);
+            console.log('🔍 Tickets length:', tickets.length);
+            
+            if (tickets.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-success">
+                            <i class="bi bi-check-circle me-2"></i>No hay tickets que hayan excedido el SLA
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            tickets.forEach(ticket => {
+                const priority = ticket.priority === null || ticket.priority === 'NaN' || typeof ticket.priority === 'undefined' ? 'Sin definir' : ticket.priority;
+                const category = ticket.category === null || ticket.category === 'NaN' || typeof ticket.category === 'undefined' ? 'Sin categoría' : ticket.category;
+                const technician = ticket.technician === null || ticket.technician === 'NaN' || typeof ticket.technician === 'undefined' ? 'Sin asignar' : ticket.technician;
+                const requester = ticket.requester === null || ticket.requester === 'NaN' || typeof ticket.requester === 'undefined' ? 'Sin datos' : ticket.requester;
+                const title = ticket.title === null || ticket.title === 'NaN' || typeof ticket.title === 'undefined' ? 'Sin título' : ticket.title;
+                
+                const priorityClass = priority && priority.toLowerCase().includes('crítica') ? 'text-danger' :
+                                   priority && priority.toLowerCase().includes('alta') ? 'text-warning' : '';
+                
+                html += `
+                    <tr>
+                        <td><strong>${ticket.id}</strong></td>
+                        <td class="text-truncate" style="max-width: 200px;" title="${title}">${title}</td>
+                        <td class="text-truncate" style="max-width: 150px;" title="${category}">${category}</td>
+                        <td>${technician}</td>
+                        <td class="${priorityClass}">${priority}</td>
+                        <td class="text-truncate" style="max-width: 120px;" title="${requester}">${requester}</td>
+                    </tr>
+                `;
+            });
+            
+            container.innerHTML = html;
         }
 
         function updateTechnicianStats() {

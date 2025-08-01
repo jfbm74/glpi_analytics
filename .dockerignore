@@ -1,0 +1,74 @@
+# Archivos y directorios a ignorar en Docker
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+*.cover
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Logs
+logs/
+*.log
+
+# Backups
+*.backup
+*.bak
+*.tmp
+*.temp
+
+# Data (será montado como volumen)
+data/cache/*
+data/reports/*
+data/backups/*
+data/metrics/*
+
+# Tests
+tests/
+test_*.py
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (opcional - comentar si quieres incluirla)
+# *.md
+# docs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary
+temp/
+tmp/
+
+# Node (si usas)
+node_modules/
+
+# Otros
+*.sqlite
+*.db

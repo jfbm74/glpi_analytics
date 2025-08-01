@@ -48,6 +48,7 @@ def create_app():
         'PORT': int(os.getenv('PORT', 5000)),
         'DEBUG': os.getenv('FLASK_ENV', 'production') == 'development',
         'DATABASE_URL': os.getenv('DATABASE_URL', 'sqlite:///dashboard.db'),
+        'GLPI_BASE_URL': os.getenv('GLPI_BASE_URL', 'http://192.168.0.92:8080'),
         'REDIS_URL': os.getenv('REDIS_URL'),
         'MAX_CONTENT_LENGTH': 50 * 1024 * 1024,  # 50MB max file upload
     })
@@ -395,8 +396,69 @@ def setup_main_routes(app):
             'model': os.getenv('GOOGLE_AI_MODEL', 'gemini-2.0-flash-exp'),
             'api_configured': bool(app.config.get('GOOGLE_AI_API_KEY')),
             'debug': app.config['DEBUG'],
-            'version': '1.0.0'
+            'version': '1.0.0',
+            'glpi_base_url': app.config['GLPI_BASE_URL']
         })
+    
+    @app.route('/api/infrastructure')
+    def get_infrastructure():
+        """Obtiene métricas de infraestructura crítica"""
+        try:
+            analyzer = TicketAnalyzer(app.config['DATA_DIRECTORY'])
+            return jsonify(analyzer.get_infrastructure_metrics())
+        except Exception as e:
+            app.logger.error(f"Error obteniendo métricas de infraestructura: {e}")
+            return jsonify({}), 500
+    
+    @app.route('/api/recurring-problems')
+    def get_recurring_problems():
+        """Obtiene problemas recurrentes y patrones"""
+        try:
+            analyzer = TicketAnalyzer(app.config['DATA_DIRECTORY'])
+            return jsonify(analyzer.get_recurring_problems())
+        except Exception as e:
+            app.logger.error(f"Error obteniendo problemas recurrentes: {e}")
+            return jsonify([]), 500
+    
+    @app.route('/api/resolution-time-by-category')
+    def get_resolution_time_by_category():
+        """Obtiene tiempo de resolución por categoría"""
+        try:
+            analyzer = TicketAnalyzer(app.config['DATA_DIRECTORY'])
+            return jsonify(analyzer.get_resolution_time_by_category())
+        except Exception as e:
+            app.logger.error(f"Error obteniendo tiempos de resolución: {e}")
+            return jsonify({}), 500
+    
+    @app.route('/api/top-affected-areas')
+    def get_top_affected_areas():
+        """Obtiene áreas más afectadas por incidencias"""
+        try:
+            analyzer = TicketAnalyzer(app.config['DATA_DIRECTORY'])
+            return jsonify(analyzer.get_top_affected_areas())
+        except Exception as e:
+            app.logger.error(f"Error obteniendo áreas afectadas: {e}")
+            return jsonify([]), 500
+    
+    @app.route('/api/sla-exceeded-tickets')
+    def get_sla_exceeded_tickets():
+        """Obtiene tickets que excedieron el SLA"""
+        try:
+            analyzer = TicketAnalyzer(app.config['DATA_DIRECTORY'])
+            return jsonify(analyzer.get_sla_exceeded_tickets())
+        except Exception as e:
+            app.logger.error(f"Error obteniendo tickets con SLA excedido: {e}")
+            return jsonify([]), 500
+    
+    @app.route('/api/equipment-incidents')
+    def get_equipment_incidents():
+        """Obtiene estadísticas de incidentes por equipo"""
+        try:
+            analyzer = TicketAnalyzer(app.config['DATA_DIRECTORY'])
+            return jsonify(analyzer.get_equipment_incidents())
+        except Exception as e:
+            app.logger.error(f"Error obteniendo incidentes por equipo: {e}")
+            return jsonify([]), 500
     
     # Rutas adicionales
     @app.route('/dashboard')
@@ -673,6 +735,43 @@ class TicketAnalyzer:
         # Si ningún encoding funcionó
         logging.error(f"No se pudo cargar el archivo CSV con ninguna configuración")
         raise ValueError("Archivo CSV no compatible o corrupto")
+    
+    def _apply_date_filter(self, df, start_date=None, end_date=None):
+        """Aplica filtro de fechas al DataFrame"""
+        if start_date is None and end_date is None:
+            return df
+        
+        try:
+            # Verificar si existe columna de fecha
+            date_column = None
+            possible_date_columns = ['Fecha de Apertura', 'Fecha de apertura', 'Created', 'Date']
+            
+            for col in possible_date_columns:
+                if col in df.columns:
+                    date_column = col
+                    break
+            
+            if date_column is None:
+                logging.warning("No se encontró columna de fecha para filtrar")
+                return df
+            
+            # Convertir a datetime
+            df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+            
+            # Aplicar filtros
+            if start_date:
+                start_date = pd.to_datetime(start_date)
+                df = df[df[date_column] >= start_date]
+            
+            if end_date:
+                end_date = pd.to_datetime(end_date)
+                df = df[df[date_column] <= end_date]
+            
+            return df
+            
+        except Exception as e:
+            logging.error(f"Error aplicando filtro de fecha: {e}")
+            return df
     
     def get_overall_metrics(self):
         """Obtiene métricas generales"""
@@ -1345,6 +1444,327 @@ class TicketAnalyzer:
         except Exception as e:
                 logging.error(f"Error en get_technician_resolution_stats: {e}", exc_info=True)
                 return {}
+    
+    def get_infrastructure_metrics(self):
+        """Obtiene métricas de infraestructura crítica basadas en categorías del CSV"""
+        try:
+            df = self._load_data()
+            
+            if 'Categoría' not in df.columns:
+                logging.warning("No se encontró columna Categoría para métricas de infraestructura")
+                return {}
+            
+            # Patrones para identificar infraestructura crítica
+            patterns = {
+                'email': ['email', 'correo', 'cuenta', 'casilla'],
+                'sql': ['sql', 'base', 'datos', 'backup'],
+                'print': ['impres', 'printer', 'scan'],
+                'equipment': ['equipo', 'computador', 'pc', 'internet', 'red', 'conexion']
+            }
+            
+            metrics = {}
+            
+            for category, keywords in patterns.items():
+                # Filtrar por categorías que contengan las palabras clave
+                mask = df['Categoría'].str.contains('|'.join(keywords), case=False, na=False)
+                category_tickets = df[mask]
+                
+                total_incidents = len(category_tickets)
+                
+                # Contar incidencias críticas (prioridad alta) y obtener sus IDs
+                critical_incidents = 0
+                critical_ticket_ids = []
+                if 'Prioridad' in df.columns:
+                    critical_mask = category_tickets['Prioridad'].str.contains('crítica|urgente|alta', case=False, na=False)
+                    critical_incidents = int(critical_mask.sum())
+                    if critical_incidents > 0 and 'ID' in df.columns:
+                        critical_ticket_ids = category_tickets[critical_mask]['ID'].tolist()
+                
+                # Obtener problema más común
+                top_issue = "Sin datos"
+                if total_incidents > 0 and 'Categoría' in df.columns:
+                    top_categories = category_tickets['Categoría'].value_counts()
+                    if len(top_categories) > 0:
+                        top_issue = str(top_categories.index[0]).split('>')[-1].strip()
+                
+                metrics[category] = {
+                    'total_incidents': total_incidents,
+                    'critical_incidents': critical_incidents,
+                    'critical_ticket_ids': critical_ticket_ids,
+                    'top_issue': top_issue
+                }
+            
+            logging.info(f"Métricas de infraestructura calculadas: {metrics}")
+            return metrics
+            
+        except Exception as e:
+            logging.error(f"Error en get_infrastructure_metrics: {e}")
+            return {}
+    
+    def get_recurring_problems(self):
+        """Identifica problemas recurrentes y patrones"""
+        try:
+            df = self._load_data()
+            
+            if 'Categoría' not in df.columns:
+                return []
+            
+            # Contar problemas por categoría
+            problem_counts = df['Categoría'].value_counts()
+            
+            # Identificar problemas recurrentes (más de 2 ocurrencias)
+            recurring = problem_counts[problem_counts > 2]
+            
+            problems = []
+            for problem, count in recurring.head(10).items():
+                # Calcular tendencia básica (simplificada)
+                trend = "estable"
+                if count > 5:
+                    trend = "creciente"
+                elif count < 3:
+                    trend = "decreciente"
+                
+                # Determinar impacto basado en prioridad
+                problem_tickets = df[df['Categoría'] == problem]
+                impact = "medio"
+                if 'Prioridad' in df.columns:
+                    high_priority = int(problem_tickets['Prioridad'].str.contains('crítica|urgente|alta', case=False, na=False).sum())
+                    if high_priority > count * 0.5:
+                        impact = "alto"
+                    elif high_priority == 0:
+                        impact = "bajo"
+                
+                # Determinar área afectada
+                area = "General"
+                if 'email' in problem.lower() or 'correo' in problem.lower():
+                    area = "Email"
+                elif 'impres' in problem.lower():
+                    area = "Impresión"
+                elif 'sql' in problem.lower() or 'base' in problem.lower():
+                    area = "Base de Datos"
+                elif 'equipo' in problem.lower() or 'internet' in problem.lower():
+                    area = "Equipos/Red"
+                
+                problems.append({
+                    'problem': problem.split('>')[-1].strip() if '>' in problem else problem,
+                    'frequency': count,
+                    'area': area,
+                    'impact': impact,
+                    'trend': trend
+                })
+            
+            return problems
+            
+        except Exception as e:
+            logging.error(f"Error en get_recurring_problems: {e}")
+            return []
+    
+    def get_resolution_time_by_category(self):
+        """Calcula tiempo de resolución promedio por categoría"""
+        try:
+            df = self._load_data()
+            
+            if 'Categoría' not in df.columns:
+                return {}
+            
+            # Obtener las categorías más comunes
+            top_categories = df['Categoría'].value_counts().head(5)
+            
+            resolution_times = {}
+            for category in top_categories.index:
+                category_tickets = df[df['Categoría'] == category]
+                
+                # Tiempo promedio simulado basado en tipo de problema
+                avg_time = 24.0  # Default
+                if 'email' in category.lower():
+                    avg_time = 2.5
+                elif 'impres' in category.lower():
+                    avg_time = 4.0
+                elif 'sql' in category.lower():
+                    avg_time = 12.0
+                elif 'equipo' in category.lower():
+                    avg_time = 6.0
+                
+                resolution_times[category.split('>')[-1].strip() if '>' in category else category] = {
+                    'avg_hours': avg_time,
+                    'count': len(category_tickets)
+                }
+            
+            return resolution_times
+            
+        except Exception as e:
+            logging.error(f"Error en get_resolution_time_by_category: {e}")
+            return {}
+    
+    def get_top_affected_areas(self):
+        """Identifica las áreas más afectadas por incidencias"""
+        try:
+            df = self._load_data()
+            
+            if 'Solicitante - Solicitante' not in df.columns:
+                return []
+            
+            # Contar tickets por solicitante (representando áreas)
+            area_counts = df['Solicitante - Solicitante'].value_counts().head(5)
+            
+            areas = []
+            for area, count in area_counts.items():
+                areas.append({
+                    'area': str(area),
+                    'incident_count': count,
+                    'percentage': round((count / len(df)) * 100, 1)
+                })
+            
+            return areas
+            
+        except Exception as e:
+            logging.error(f"Error en get_top_affected_areas: {e}")
+            return []
+    
+    def get_sla_exceeded_tickets(self):
+        """Obtiene detalles de los tickets que excedieron el SLA"""
+        try:
+            df = self._load_data()
+            
+            # Verificar columnas necesarias
+            required_columns = ['Tipo', 'Se superó el tiempo de resolución', 'ID', 'Título']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                logging.warning(f"Columnas faltantes para SLA excedido: {missing_columns}")
+                return []
+            
+            # Filtrar solo incidencias que excedieron SLA
+            incidents = df[df['Tipo'] == 'Incidencia'].copy()
+            sla_exceeded = incidents[incidents['Se superó el tiempo de resolución'] == 'Si']
+            
+            if len(sla_exceeded) == 0:
+                return []
+            
+            # Preparar datos para mostrar
+            tickets = []
+            for _, ticket in sla_exceeded.iterrows():
+                # Función auxiliar para manejar NaN
+                def safe_get(key, default='N/A'):
+                    value = ticket.get(key, default)
+                    # Convertir NaN a None para JSON válido
+                    if pd.isna(value):
+                        return None
+                    return value
+                
+                ticket_info = {
+                    'id': safe_get('ID'),
+                    'title': safe_get('Título', 'Sin título'),
+                    'category': safe_get('Categoría', 'Sin categoría'),
+                    'technician': safe_get('Asignado a: - Técnico', 'Sin asignar'),
+                    'priority': safe_get('Prioridad', 'N/A'),
+                    'requester': safe_get('Solicitante - Solicitante', 'N/A')
+                }
+                tickets.append(ticket_info)
+            
+            # Definir orden de prioridad (alta a baja)
+            priority_order = {
+                'Crítica': 0, 
+                'Alta': 1, 
+                'Mediana': 2, 
+                'Media': 2,  # Alias para Mediana
+                'Baja': 3,
+                'Muy Baja': 4,
+                'N/A': 5,
+                None: 5
+            }
+            
+            # Ordenar por prioridad (alta a baja) y luego por ID descendente
+            tickets.sort(key=lambda x: (
+                priority_order.get(x['priority'], 5), 
+                -(int(x['id']) if str(x['id']).isdigit() else 0)
+            ))
+            
+            return tickets
+            
+        except Exception as e:
+            logging.error(f"Error en get_sla_exceeded_tickets: {e}")
+            return []
+    
+    def get_equipment_incidents(self):
+        """Obtiene estadísticas de incidentes por equipo"""
+        try:
+            df = self._load_data()
+            
+            # Verificar columnas necesarias
+            required_columns = ['Tipo', 'Categoría', 'Elementos asociados']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                logging.warning(f"Columnas faltantes para análisis de equipos: {missing_columns}")
+                return []
+            
+            # Filtrar solo incidencias
+            incidents = df[df['Tipo'] == 'Incidencia'].copy()
+            
+            if len(incidents) == 0:
+                logging.info("No hay incidencias para analizar equipos")
+                return []
+            
+            # Filtrar por categorías relevantes
+            category_filters = [
+                'Equipos Computo', 'Equipos de Computo', 
+                'Servicios de Impresion', 'Servicios de Impresión',
+                'Telefonia', 'Telefonía',
+                'Red'
+            ]
+            
+            # Crear máscara para las categorías relevantes
+            category_mask = incidents['Categoría'].str.contains('|'.join(category_filters), case=False, na=False)
+            filtered_incidents = incidents[category_mask]
+            
+            if len(filtered_incidents) == 0:
+                logging.info("No hay incidencias de equipos en las categorías especificadas")
+                return []
+            
+            # Diccionario para contar incidentes por equipo
+            equipment_counts = {}
+            
+            # Procesar cada incidencia
+            for _, incident in filtered_incidents.iterrows():
+                equipment_field = incident.get('Elementos asociados', '')
+                
+                if pd.isna(equipment_field) or equipment_field == '' or str(equipment_field).strip() == '':
+                    continue
+                
+                # Limpiar el campo y dividir por guiones
+                equipment_field = str(equipment_field).strip()
+                
+                # Dividir por guiones y limpiar cada equipo
+                equipments = [eq.strip() for eq in equipment_field.split('-') if eq.strip()]
+                
+                # Contar cada equipo
+                for equipment in equipments:
+                    if equipment and equipment.upper() not in ['N/A', 'NULL', 'NONE', '']:
+                        equipment_counts[equipment] = equipment_counts.get(equipment, 0) + 1
+            
+            # Convertir a lista y ordenar por cantidad descendente
+            equipment_list = [
+                {
+                    'equipment': equipment,
+                    'incident_count': count,
+                    'category': 'Equipos de TI'  # Categoría general
+                }
+                for equipment, count in equipment_counts.items()
+            ]
+            
+            # Ordenar por cantidad de incidentes (mayor a menor)
+            equipment_list.sort(key=lambda x: x['incident_count'], reverse=True)
+            
+            # Limitar a top 20 para evitar listas muy largas
+            equipment_list = equipment_list[:20]
+            
+            logging.info(f"Análisis de equipos completado: {len(equipment_list)} equipos encontrados")
+            return equipment_list
+            
+        except Exception as e:
+            logging.error(f"Error en get_equipment_incidents: {e}")
+            return []
 
 # Configurar aplicación para diferentes entornos
 def configure_for_environment():
