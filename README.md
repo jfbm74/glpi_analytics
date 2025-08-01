@@ -93,22 +93,126 @@ Transformar datos brutos de tickets de soporte en insights estratégicos que per
 
 ## 🚀 Inicio Rápido
 
-### Instalación con Docker (Recomendado)
+### 🐳 Instalación con Docker (Recomendado)
+
+#### Requisitos Previos
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 4GB RAM mínimo disponible
+- Puertos 10080 y 10443 libres (configurables)
+
+#### Pasos de Instalación
 
 ```bash
 # 1. Clonar repositorio
 git clone https://github.com/clinica-bonsana/dashboard-it.git
 cd dashboard-it
 
-# 2. Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tu API key de Google AI
+# 2. Crear archivo de variables de entorno
+cat > .env << EOF
+# API Keys
+GOOGLE_AI_API_KEY=tu_api_key_de_google_ai
 
-# 3. Levantar servicios
+# Configuración Flask
+FLASK_ENV=production
+SECRET_KEY=$(openssl rand -hex 32)
+
+# Base de datos (usa los valores de docker-compose.yml)
+DATABASE_URL=postgresql://dashboard_user:dashboard_pass@postgres:5432/dashboard_db
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# Configuración adicional
+DATA_DIRECTORY=data
+LOG_LEVEL=INFO
+EOF
+
+# 3. Crear directorios necesarios
+mkdir -p data/{cache,reports,backups,metrics} logs/{nginx}
+
+# 4. Construir y levantar servicios
 docker-compose up -d
 
-# 4. Acceder a la aplicación
-open http://localhost
+# 5. Verificar que los servicios estén corriendo
+docker-compose ps
+
+# 6. Ver logs en tiempo real (opcional)
+docker-compose logs -f dashboard
+
+# 7. Acceder a la aplicación
+open http://localhost:10080
+```
+
+#### Comandos Docker Útiles
+
+```bash
+# Detener todos los servicios
+docker-compose down
+
+# Reiniciar un servicio específico
+docker-compose restart dashboard
+
+# Ver logs de un servicio
+docker-compose logs dashboard
+docker-compose logs nginx
+
+# Ejecutar comandos dentro del contenedor
+docker-compose exec dashboard python test_ai.py
+
+# Actualizar la aplicación
+git pull
+docker-compose build dashboard
+docker-compose up -d dashboard
+
+# Backup de la base de datos
+docker-compose exec postgres pg_dump -U dashboard_user dashboard_db > backup_$(date +%Y%m%d).sql
+
+# Restaurar backup
+docker-compose exec -T postgres psql -U dashboard_user dashboard_db < backup_20240731.sql
+```
+
+#### Configuraciones Avanzadas
+
+```bash
+# Levantar con monitoreo (Prometheus + Grafana)
+docker-compose --profile monitoring up -d
+
+# URLs de monitoreo:
+# - Prometheus: http://localhost:10090
+# - Grafana: http://localhost:10300 (admin/admin_password_change_this)
+
+# Ejecutar backup automatizado
+docker-compose --profile backup run backup
+
+# Usar en producción con SSL
+# 1. Editar nginx/nginx.conf con tu dominio
+# 2. Obtener certificados SSL
+docker-compose exec nginx certbot --nginx -d tu-dominio.com
+
+# Escalar workers de la aplicación
+docker-compose up -d --scale dashboard=3
+```
+
+#### Solución de Problemas Docker
+
+```bash
+# Si el puerto 10080 está ocupado
+# Editar docker-compose.yml y cambiar "10080:80" por otro puerto disponible
+
+# Si hay problemas de permisos
+docker-compose exec dashboard chown -R dashboard:dashboard /app/data
+
+# Limpiar todo y empezar de nuevo
+docker-compose down -v
+docker system prune -a
+rm -rf data/* logs/*
+
+# Ver uso de recursos
+docker stats
+
+# Inspeccionar la red
+docker network inspect glpi_analytics_dashboard_network
 ```
 
 ### Instalación Manual

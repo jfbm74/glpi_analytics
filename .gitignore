@@ -1,32 +1,12 @@
-# Dashboard IT - Clínica Bonsana
-# Archivo .gitignore
-
-# Archivos de datos sensibles
-data/*.csv
-data/*.xlsx
-data/*.xls
-!data/sample_*.csv
-!data/.gitkeep
-
-# Archivos de configuración sensibles
-config_local.py
-.env
-.env.local
-.env.production
-
-# Logs
-logs/
-*.log
-
-# Backups
-backups/
-*.backup
-
-# Archivos temporales de Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -40,6 +20,7 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -49,16 +30,55 @@ MANIFEST
 *.manifest
 *.spec
 
-# Entornos virtuales
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-.venv
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
 
 # pyenv
 .python-version
@@ -66,15 +86,30 @@ venv.bak/
 # pipenv
 Pipfile.lock
 
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
 # PEP 582
 __pypackages__/
 
-# Celery
+# Celery stuff
 celerybeat-schedule
 celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Spyder project settings
 .spyderproject
@@ -94,140 +129,63 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# IDEs y editores
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# VS Code
 .vscode/
+
+# JetBrains
 .idea/
-*.swp
-*.swo
-*~
 
-# Sistema operativo
+# macOS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
+
+# Windows
 Thumbs.db
+ehthumbs.db
 
-# Archivos de Windows
-*.lnk
+# Data files (but keep directory structure)
+data/*.csv
+data/cache/*
+data/reports/*
+data/backups/*
+data/metrics/*
+!data/.gitkeep
+!data/cache/.gitkeep
+!data/reports/.gitkeep
+!data/backups/.gitkeep
+!data/metrics/.gitkeep
 
-# Archivos temporales
+# Logs
+logs/*.log
+logs/nginx/*.log
+!logs/.gitkeep
+!logs/nginx/.gitkeep
+
+# Backups
+*.backup
+*.bak
 *.tmp
 *.temp
-temp/
-tmp/
 
-# Archivos de prueba
-test_data/
-testing/
-*_test.csv
-
-# Certificados SSL (si se usan)
-*.pem
-*.key
-*.crt
-*.cert
-
-# Archivos de base de datos
+# Database
 *.db
 *.sqlite
 *.sqlite3
 
-# Archivos de cache
-.cache/
-*.cache
+# Temporary files
+temp/
+tmp/
 
-# Archivos de reportes generados
-reportes/*.pdf
-reportes/*.xlsx
-reportes/*.json
-!reportes/.gitkeep
+# Secret files
+*.key
+*.pem
+*.crt
 
-# Archivos de exportación
-exports/
-*.export
-
-# Archivos de configuración de servidor web
-nginx.conf
-apache.conf
-.htaccess
-
-# Archivos de Docker (para futuras versiones)
-.dockerignore
-docker-compose.override.yml
-
-# Variables de entorno específicas del proyecto
-.env.bonsana
-.env.development
-.env.testing
-
-# Archivos de monitoreo
-monitoring/
-*.pid
-
-# Archivos de sesión de Flask
-flask_session/
-
-# Archivos de upload temporales
-uploads/
-temp_uploads/
-
-# Archivos de instalación específicos del sistema
-install.log
-setup.log
-
-# Archivos de benchmark y profiling
-profile_results/
-benchmark_results/
-*.prof
-
-# Documentación generada automáticamente
-docs/_build/
-docs/auto/
-
-# Archivos específicos de Clínica Bonsana (datos reales)
-data/clinica_bonsana_*.csv
-data/glpi_real_*.csv
-data/produccion_*.csv
-
-# Credenciales y tokens
-tokens.json
-credentials.json
-auth.json
-
-# Archivos de estado de la aplicación
-state/
-status/
-.status
-
-# Archivos de migración de datos
-migrations/
-migration_*.json
-
-# Archivos de configuración de terceros
-.flaskenv
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Archivos específicos del entorno de desarrollo
-development/
-dev_tools/
-debug/
-
-# Archivos de respaldo automático
-*.bak
-*.backup
-auto_backup_*
-
-# Archivos de configuración de CI/CD
-.github/workflows/
-.gitlab-ci.yml
-.travis.yml
-circle.yml
-
-# Archivos de análisis de código
-.sonarqube/
-.codeclimate.yml
+# Local configuration
+config.local.py
+settings.local.py

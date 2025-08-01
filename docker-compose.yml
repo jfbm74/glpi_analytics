@@ -40,8 +40,8 @@ services:
     container_name: dashboard_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "10080:80"
+      - "10443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/sites-available:/etc/nginx/sites-available:ro
@@ -102,7 +102,7 @@ services:
     container_name: dashboard_prometheus
     restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "10090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -124,7 +124,7 @@ services:
     container_name: dashboard_grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "10300:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin_password_change_this
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
