@@ -772,7 +772,49 @@ class TicketAnalyzer:
         except Exception as e:
             logging.error(f"Error aplicando filtro de fecha: {e}")
             return df
-    
+
+    def _parse_resolution_time(self, time_str):
+        """
+        Parsea una cadena de tiempo en formato 'X días Y horas Z minutos' y retorna el total en horas
+
+        Args:
+            time_str: String con formato como "3 días 0 horas 3 minutos" o "8 horas 14 minutos"
+
+        Returns:
+            float: Tiempo total en horas, o None si no se puede parsear
+        """
+        import re
+        try:
+            if pd.isna(time_str) or time_str == '' or time_str == '0 seconds':
+                return None
+
+            total_hours = 0
+            time_str = str(time_str).lower()
+
+            # Parsear días
+            if 'día' in time_str or 'dias' in time_str:
+                days_match = re.search(r'(\d+)\s*d[ií]as?', time_str)
+                if days_match:
+                    total_hours += int(days_match.group(1)) * 24
+
+            # Parsear horas
+            if 'hora' in time_str:
+                hours_match = re.search(r'(\d+)\s*horas?', time_str)
+                if hours_match:
+                    total_hours += int(hours_match.group(1))
+
+            # Parsear minutos
+            if 'minuto' in time_str:
+                minutes_match = re.search(r'(\d+)\s*minutos?', time_str)
+                if minutes_match:
+                    total_hours += int(minutes_match.group(1)) / 60
+
+            return total_hours if total_hours > 0 else None
+
+        except Exception as e:
+            logging.warning(f"Error parseando tiempo '{time_str}': {e}")
+            return None
+
     def get_overall_metrics(self):
         """Obtiene métricas generales"""
         try:
@@ -799,8 +841,24 @@ class TicketAnalyzer:
                 else:
                     logging.warning("No se encontraron incidencias para calcular SLA")
             
-            # Tiempo promedio de resolución (simulado si no hay datos reales)
-            avg_resolution_time = 24.5  # Placeholder
+            # Tiempo promedio de resolución - calcular desde los datos reales
+            avg_resolution_time = 0
+            if 'Estadísticas - Tiempo de solución' in df.columns:
+                # Parsear todos los tiempos de resolución
+                resolution_times = []
+                for time_str in df['Estadísticas - Tiempo de solución']:
+                    parsed_time = self._parse_resolution_time(time_str)
+                    if parsed_time is not None:
+                        resolution_times.append(parsed_time)
+
+                # Calcular promedio
+                if resolution_times:
+                    avg_resolution_time = sum(resolution_times) / len(resolution_times)
+                    logging.info(f"Tiempo promedio de resolución calculado: {round(avg_resolution_time, 2)} horas desde {len(resolution_times)} tickets")
+                else:
+                    logging.warning("No se pudieron parsear tiempos de resolución")
+            else:
+                logging.warning("Columna 'Estadísticas - Tiempo de solución' no encontrada en el CSV")
             
             # Obtener datos del CSAT
             csat_data = self.get_csat_score()
@@ -814,7 +872,7 @@ class TicketAnalyzer:
             return {
                 'total_tickets': total_tickets,
                 'resolution_rate': round(resolution_rate, 1),
-                'avg_resolution_time_hours': avg_resolution_time,
+                'avg_resolution_time_hours': round(avg_resolution_time, 1),
                 'sla_compliance': round(sla_compliance, 1),
                 'csat_percentage': csat_data.get('csat_percentage', 0),
                 'high_satisfaction_count': csat_data.get('high_satisfaction_count', 0),
