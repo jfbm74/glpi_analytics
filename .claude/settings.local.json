@@ -4,7 +4,21 @@
       "Bash(curl:*)",
       "Bash(python3:*)",
       "Bash(source venv/bin/activate)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(git config:*)",
+      "Bash(cat:*)",
+      "Bash(ssh-add:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(ssh:*)",
+      "Bash(python run_dashboard.py:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker network:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(chmod:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(docker-compose restart:*)"
     ],
     "deny": []
   }
